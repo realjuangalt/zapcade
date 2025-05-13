@@ -51,8 +51,8 @@
       flex-direction: column;
       align-items: center;
       font-family: Arial, sans-serif;
-      background: #1A1A1A;
-      color: #F5F5F5;
+      background: #1A1A1A; /* Matte black */
+      color: #F5F5F5; /* Light white */
       touch-action: none;
     }
     #header {
@@ -66,8 +66,8 @@
     #header h1 {
       margin: 0;
       font-size: 24px;
-      padding-left: 10px;
-      color: #F5F5F5;
+      padding-left: 10px; /* Added padding to the left of the title */
+      color: #F5F5F5; /* Light white */
     }
     #burger-menu {
       width: 30px;
@@ -77,12 +77,12 @@
       justify-content: space-between;
       cursor: pointer;
       z-index: 1000;
-      padding-right: 10px;
+      padding-right: 10px; /* Added padding to the right */
     }
     #burger-menu span {
       width: 100%;
       height: 3px;
-      background: #F7931A;
+      background: #F7931A; /* Bitcoin orange */
       transition: all 0.3s;
     }
     #burger-menu.open span:nth-child(1) {
@@ -100,7 +100,7 @@
       right: -100%;
       width: 200px;
       height: 100%;
-      background: #222;
+      background: #222; /* Dark gray */
       transition: right 0.3s;
       padding: 20px;
       box-sizing: border-box;
@@ -114,43 +114,43 @@
       width: 100%;
       padding: 10px;
       margin-bottom: 10px;
-      background: #555;
-      color: #F5F5F5;
+      background: #555; /* Medium gray */
+      color: #F5F5F5; /* Light white */
       border: none;
       cursor: pointer;
       font-size: 16px;
       text-align: left;
     }
     #game-menu button:hover {
-      background: #D3D3D3;
+      background: #D3D3D3; /* Light gray */
     }
     #canvas {
-      border: 2px solid #F7931A;
-      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5);
+      border: 2px solid #F7931A; /* Bitcoin orange border */
+      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5); /* Bitcoin orange glow */
       max-width: 400px;
       width: 90vw;
       height: calc(100vh - 210px);
-      background: #1A1A1A;
+      background: #1A1A1A; /* Matte black */
     }
     #controls {
       position: fixed;
       bottom: 0;
       width: 100%;
       max-width: 400px;
-      padding: 10px 10px 10px 10px;
+      padding: 10px 10px 10px 10px; /* Added padding-left and padding-right for edge spacing */
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(26, 26, 26, 0.5);
+      background: rgba(26, 26, 26, 0.5); /* Matte black with transparency */
     }
     .joystick {
       width: 100px;
       height: 100px;
-      background: rgba(85, 85, 85, 0.3);
+      background: rgba(85, 85, 85, 0.3); /* Medium gray with transparency */
       border-radius: 50%;
       position: relative;
       touch-action: none;
-      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5);
+      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5); /* Bitcoin orange glow */
     }
     #aim {
       width: 140px;
@@ -159,7 +159,7 @@
     .knob {
       width: 40px;
       height: 40px;
-      background: #F5F5F5;
+      background: #F5F5F5; /* Light white */
       border-radius: 50%;
       position: absolute;
       top: 50%;
@@ -169,16 +169,16 @@
     #action {
       width: 60px;
       height: 60px;
-      background: #F7931A;
-      color: #1A1A1A;
+      background: #F7931A; /* Bitcoin orange */
+      color: #1A1A1A; /* Matte black text */
       border: none;
       border-radius: 50%;
       font-size: 24px;
       cursor: pointer;
       touch-action: none;
-      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5),
-                 inset 0 0 10px rgba(245, 245, 245, 0.5),
-                 0 0 5px rgba(247, 147, 26, 0.3);
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5), /* Drop shadow */
+                 inset 0 0 10px rgba(245, 245, 245, 0.5), /* Inner light (light white) */
+                 0 0 5px rgba(247, 147, 26, 0.3); /* Bitcoin orange outer glow */
     }
   </style>
 </head>
@@ -230,7 +230,7 @@
         } catch (error) {
           console.error('Failed to fetch games list:', error);
           // Fallback list in case games.json is missing
-          this.gamesList = ['cosmic-defender', 'space-invaders'];
+          this.gamesList = ['cosmic-defender', 'space-invaders', 'gorilla-rampage'];
         }
       }
 
@@ -275,10 +275,14 @@
         const actionButton = document.getElementById('action');
 
         this.handleJoystick = (element, callback) => {
-          let startX, startY, isDragging = false;
+          let touchId = null; // Tracks the specific touch for this joystick
           const knob = element.querySelector('.knob');
-          const updateKnob = (x, y) => {
+
+          const updateKnob = (touch) => {
+            if (!touch) return;
             const rect = element.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
             const maxDist = rect.width / 2 - knob.offsetWidth / 2;
@@ -308,27 +312,29 @@
 
           element.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
-            startX = touch.clientX - element.getBoundingClientRect().left;
-            startY = touch.clientY - element.getBoundingClientRect().top;
-            isDragging = true;
-            updateKnob(startX, startY);
+            if (touchId !== null) return; // Ignore if already tracking a touch
+            const touch = e.changedTouches[0];
+            touchId = touch.identifier; // Capture the touch identifier
+            updateKnob(touch);
           });
 
           element.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            if (!isDragging) return;
-            const touch = e.touches[0];
-            const x = touch.clientX - element.getBoundingClientRect().left;
-            const y = touch.clientY - element.getBoundingClientRect().top;
-            updateKnob(x, y);
+            if (touchId === null) return;
+            const touch = Array.from(e.touches).find(t => t.identifier === touchId);
+            if (touch) {
+              updateKnob(touch); // Update only for the tracked touch
+            }
           });
 
-          element.addEventListener('touchend', () => {
-            isDragging = false;
-            knob.style.left = '50%';
-            knob.style.top = '50%';
-            callback(0, 0, 0);
+          element.addEventListener('touchend', (e) => {
+            if (touchId === null) return;
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === touchId);
+            if (touch) {
+              touchId = null; // Stop tracking when the touch ends
+              knob.style.left = '50%';
+              knob.style.top = '50%';
+              callback(0, 0, 0);
+            }
           });
         };
 
