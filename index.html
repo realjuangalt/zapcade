@@ -42,7 +42,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cosmic Defender</title>
+  <title>Zapcade</title>
   <style>
     body {
       margin: 0;
@@ -50,48 +50,116 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: #111;
-      color: #fff;
       font-family: Arial, sans-serif;
-      overflow: hidden;
-      height: 100vh;
+      background: #1A1A1A;
+      color: #F5F5F5;
+      touch-action: none;
     }
     #header {
-      font-size: 24px;
+      width: 100%;
+      max-width: 400px;
       padding: 10px;
-      text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #header h1 {
+      margin: 0;
+      font-size: 24px;
+      padding-left: 10px;
+      color: #F5F5F5;
+    }
+    #burger-menu {
+      width: 30px;
+      height: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      z-index: 1000;
+      padding-right: 10px;
+    }
+    #burger-menu span {
+      width: 100%;
+      height: 3px;
+      background: #F7931A;
+      transition: all 0.3s;
+    }
+    #burger-menu.open span:nth-child(1) {
+      transform: rotate(45deg) translate(5px, 5px);
+    }
+    #burger-menu.open span:nth-child(2) {
+      opacity: 0;
+    }
+    #burger-menu.open span:nth-child(3) {
+      transform: rotate(-45deg) translate(5px, -5px);
+    }
+    #game-menu {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 200px;
+      height: 100%;
+      background: #222;
+      transition: right 0.3s;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 999;
+    }
+    #game-menu.open {
+      right: 0;
+    }
+    #game-menu button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #555;
+      color: #F5F5F5;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      text-align: left;
+    }
+    #game-menu button:hover {
+      background: #D3D3D3;
     }
     #canvas {
-      border: 1px solid #fff;
-      touch-action: none;
-      max-width: 100%;
-      max-height: 60vh;
+      border: 2px solid #F7931A;
+      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5);
+      max-width: 400px;
+      width: 90vw;
+      height: calc(100vh - 210px);
+      background: #1A1A1A;
     }
     #controls {
       position: fixed;
       bottom: 0;
       width: 100%;
+      max-width: 400px;
+      padding: 10px 10px 10px 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px;
+      background: rgba(26, 26, 26, 0.5);
     }
     .joystick {
       width: 100px;
       height: 100px;
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(85, 85, 85, 0.3);
       border-radius: 50%;
       position: relative;
       touch-action: none;
+      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5);
     }
-    #aim.joystick {
+    #aim {
       width: 140px;
       height: 140px;
     }
     .knob {
       width: 40px;
       height: 40px;
-      background: #fff;
+      background: #F5F5F5;
       border-radius: 50%;
       position: absolute;
       top: 50%;
@@ -101,18 +169,31 @@
     #action {
       width: 60px;
       height: 60px;
-      background: #f00;
-      border-radius: 50%;
+      background: #F7931A;
+      color: #1A1A1A;
       border: none;
-      color: #fff;
-      font-size: 20px;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
       touch-action: none;
-      margin: 0 20px;
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5),
+                 inset 0 0 10px rgba(245, 245, 245, 0.5),
+                 0 0 5px rgba(247, 147, 26, 0.3);
     }
   </style>
 </head>
 <body>
-  <div id="header">COSMIC DEFENDER</div>
+  <div id="header">
+    <h1>Zapcade</h1>
+    <div id="burger-menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+  <div id="game-menu">
+    <!-- Buttons will be dynamically generated -->
+  </div>
   <canvas id="canvas"></canvas>
   <div id="controls">
     <div id="move" class="joystick"><div class="knob"></div></div>
@@ -120,197 +201,190 @@
     <div id="aim" class="joystick"><div class="knob"></div></div>
   </div>
 
-  <script>
+  <script type="module">
     class Interface {
       constructor() {
         this.canvas = document.getElementById('canvas');
         this.ctx = this.canvas.getContext('2d');
-        this.moveJoystick = document.getElementById('move');
-        this.aimJoystick = document.getElementById('aim');
-        this.actionButton = document.getElementById('action');
         this.callbacks = {};
-        this.keys = { w: false, a: false, s: false, d: false };
-        this.shootInterval = null;
-        this.touchIds = { move: null, aim: null }; // Track touch identifiers
-        this.init();
-      }
-
-      init() {
+        this.burgerMenu = document.getElementById('burger-menu');
+        this.gameMenu = document.getElementById('game-menu');
+        this.currentGame = null;
+        this.dpr = window.devicePixelRatio || 1;
         this.resizeCanvas();
+        this.setupInputs();
+        this.fetchGamesList().then(() => this.setupGameMenu());
         window.addEventListener('resize', () => this.resizeCanvas());
-        this.setupTouchControls();
-        this.setupKeyboardControls();
-        this.setupMouseControls();
+        this.displayInitialMessage();
       }
 
-      resizeCanvas() {
-        const maxWidth = window.innerWidth * 0.9;
-        const maxHeight = window.innerHeight * 0.6;
-        this.canvas.width = Math.min(400, maxWidth);
-        this.canvas.height = Math.min(600, maxHeight);
-        if (this.callbacks.onResize) {
-          this.callbacks.onResize(this.canvas.width, this.canvas.height);
+      async fetchGamesList() {
+        try {
+          const response = await fetch('./games/games.json');
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          const data = await response.json();
+          this.gamesList = data.games;
+          console.log('Fetched games list:', this.gamesList);
+        } catch (error) {
+          console.error('Failed to fetch games list:', error);
+          // Fallback list in case games.json is missing
+          this.gamesList = ['cosmic-defender', 'space-invaders'];
         }
+      }
+
+      formatGameName(folderName) {
+        return folderName
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+      }
+
+      displayInitialMessage() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = '#F5F5F5';
+        this.ctx.font = '24px Arial, sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('Select a game from the menu', this.canvas.width / 2, this.canvas.height / 2);
       }
 
       setCallback(event, callback) {
         this.callbacks[event] = callback;
       }
 
-      setupTouchControls() {
-        const moveKnob = this.moveJoystick.querySelector('.knob');
-        const aimKnob = this.aimJoystick.querySelector('.knob');
+      resizeCanvas() {
+        const maxWidth = Math.min(400, window.innerWidth * 0.9);
+        const cssWidth = Math.min(maxWidth, window.innerWidth * 0.9);
+        const cssHeight = this.canvas.getBoundingClientRect().height;
+        this.canvas.width = cssWidth;
+        this.canvas.height = cssHeight;
+        this.canvas.style.width = `${cssWidth}px`;
+        this.canvas.style.height = `${cssHeight}px`;
+        if (this.callbacks.onResize) {
+          this.callbacks.onResize(cssWidth, cssHeight);
+        } else {
+          this.displayInitialMessage();
+        }
+      }
 
-        const handleJoystick = (element, knob, callbackMove, callbackShoot) => {
-          const moveKnobTo = (x, y) => {
+      setupInputs() {
+        const moveJoystick = document.getElementById('move');
+        const aimJoystick = document.getElementById('aim');
+        const actionButton = document.getElementById('action');
+
+        this.handleJoystick = (element, callback) => {
+          let startX, startY, isDragging = false;
+          const knob = element.querySelector('.knob');
+          const updateKnob = (x, y) => {
             const rect = element.getBoundingClientRect();
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
-            const dx = x - rect.left - centerX;
-            const dy = y - rect.top - centerY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
             const maxDist = rect.width / 2 - knob.offsetWidth / 2;
-            const angle = Math.atan2(dy, dx);
-            const limitedDist = Math.min(dist, maxDist);
-            const newX = centerX + Math.cos(angle) * limitedDist - knob.offsetWidth / 2;
-            const newY = centerY + Math.sin(angle) * limitedDist - knob.offsetHeight / 2;
-            knob.style.left = newX + 'px';
-            knob.style.top = newY + 'px';
-            const normX = (dx / maxDist).toFixed(2);
-            const normY = (dy / maxDist).toFixed(2);
-            const distFactor = dist / maxDist;
-            return { dx: normX, dy: normY, dist: distFactor };
-          };
-
-          const resetKnob = () => {
-            knob.style.left = '50%';
-            knob.style.top = '50%';
-            knob.style.transform = 'translate(-50%, -50%)';
+            let dx = x - centerX;
+            let dy = y - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > maxDist) {
+              dx = (dx / dist) * maxDist;
+              dy = (dy / dist) * maxDist;
+            }
+            knob.style.left = centerX + dx + 'px';
+            knob.style.top = centerY + dy + 'px';
+            const normalizedDx = dx / maxDist;
+            const normalizedDy = dy / maxDist;
+            const mag = Math.sqrt(normalizedDx * normalizedDx + normalizedDy * normalizedDy);
+            const isAimJoystick = element.id === 'aim';
+            if (mag > 0.2) {
+              if (isAimJoystick) {
+                callback(normalizedDx, normalizedDy, mag);
+              } else {
+                callback(normalizedDx / mag, normalizedDy / mag, mag);
+              }
+            } else {
+              callback(0, 0, 0);
+            }
           };
 
           element.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            for (let touch of e.changedTouches) {
-              const rect = element.getBoundingClientRect();
-              const x = touch.clientX - rect.left;
-              const y = touch.clientY - rect.top;
-              if (x >= 0 && x <= rect.width && y >= 0 && y <= rect.height) {
-                if (element === this.moveJoystick && this.touchIds.move === null) {
-                  this.touchIds.move = touch.identifier;
-                } else if (element === this.aimJoystick && this.touchIds.aim === null) {
-                  this.touchIds.aim = touch.identifier;
-                }
-              }
-            }
+            const touch = e.touches[0];
+            startX = touch.clientX - element.getBoundingClientRect().left;
+            startY = touch.clientY - element.getBoundingClientRect().top;
+            isDragging = true;
+            updateKnob(startX, startY);
           });
 
           element.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            for (let touch of e.touches) {
-              if (element === this.moveJoystick && touch.identifier === this.touchIds.move) {
-                const { dx, dy } = moveKnobTo(touch.clientX, touch.clientY);
-                if (callbackMove) {
-                  const magnitude = Math.sqrt(dx * dx + dy * dy);
-                  if (magnitude > 0.2) {
-                    const normDx = parseFloat(dx) / magnitude;
-                    const normDy = parseFloat(dy) / magnitude;
-                    callbackMove(normDx, normDy, true);
-                  } else {
-                    callbackMove(0, 0, true);
-                  }
-                }
-              } else if (element === this.aimJoystick && touch.identifier === this.touchIds.aim) {
-                const { dx, dy, dist } = moveKnobTo(touch.clientX, touch.clientY);
-                if (callbackMove) {
-                  callbackMove(dx, dy, true);
-                }
-                if (callbackShoot && dist > 0.3) {
-                  callbackShoot(dist, true);
-                }
-              }
-            }
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            const x = touch.clientX - element.getBoundingClientRect().left;
+            const y = touch.clientY - element.getBoundingClientRect().top;
+            updateKnob(x, y);
           });
 
-          element.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            for (let touch of e.changedTouches) {
-              if (element === this.moveJoystick && touch.identifier === this.touchIds.move) {
-                resetKnob();
-                this.touchIds.move = null;
-                if (callbackMove) callbackMove(0, 0, true);
-              } else if (element === this.aimJoystick && touch.identifier === this.touchIds.aim) {
-                resetKnob();
-                this.touchIds.aim = null;
-                if (callbackMove) callbackMove(0, 0, true);
-                if (callbackShoot) callbackShoot(0, false);
-              }
-            }
+          element.addEventListener('touchend', () => {
+            isDragging = false;
+            knob.style.left = '50%';
+            knob.style.top = '50%';
+            callback(0, 0, 0);
           });
         };
 
-        handleJoystick(this.moveJoystick, moveKnob, (dx, dy, isMobile) => {
-          if (this.callbacks.onMove) this.callbacks.onMove(dx, dy, isMobile);
+        this.handleJoystick(moveJoystick, (dx, dy, mag) => {
+          if (this.callbacks.onMove) this.callbacks.onMove(dx, dy, true);
         });
 
-        handleJoystick(this.aimJoystick, aimKnob, (x, y, isMobile) => {
-          if (this.callbacks.onAim) {
-            const rect = this.canvas.getBoundingClientRect();
-            const canvasX = (x * this.canvas.width) / 2 + this.canvas.width / 2;
-            const canvasY = (y * this.canvas.height) / 2 + this.canvas.height / 2;
-            this.callbacks.onAim(canvasX, canvasY);
-          }
-        }, (dist, isActive) => {
-          if (this.callbacks.onShoot) this.callbacks.onShoot(dist, isActive);
+        this.handleJoystick(aimJoystick, (dx, dy, dist) => {
+          const canvasRect = this.canvas.getBoundingClientRect();
+          const centerX = canvasRect.left + this.canvas.width / 2;
+          const centerY = canvasRect.top + this.canvas.height / 2;
+          const scale = Math.max(this.canvas.width, this.canvas.height);
+          const aimX = centerX + dx * scale;
+          const aimY = centerY + dy * scale;
+          if (this.callbacks.onAim) this.callbacks.onAim(aimX - canvasRect.left, aimY - canvasRect.top);
+          if (this.callbacks.onShoot) this.callbacks.onShoot(dist, dist > 0.3, dx, dy);
         });
 
-        this.actionButton.addEventListener('touchstart', (e) => {
-          e.preventDefault();
+        actionButton.addEventListener('touchstart', () => {
           if (this.callbacks.onAction) this.callbacks.onAction();
         });
 
-        this.canvas.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          if (this.callbacks.onRestart) this.callbacks.onRestart();
-        });
-      }
-
-      setupKeyboardControls() {
-        window.addEventListener('keydown', (e) => {
-          if (e.key === 'w') this.keys.w = true;
-          if (e.key === 'a') this.keys.a = true;
-          if (e.key === 's') this.keys.s = true;
-          if (e.key === 'd') this.keys.d = true;
-          if (e.key === ' ' && this.callbacks.onAction) {
-            e.preventDefault();
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+          keys[e.code] = true;
+          let dx = 0, dy = 0;
+          if (keys['KeyW']) dy -= 1;
+          if (keys['KeyS']) dy += 1;
+          if (keys['KeyA']) dx -= 1;
+          if (keys['KeyD']) dx += 1;
+          const mag = Math.sqrt(dx * dx + dy * dy);
+          if (mag > 0) {
+            dx /= mag;
+            dy /= mag;
+            if (this.callbacks.onMove) this.callbacks.onMove(dx, dy, false);
+          }
+          if (e.code === 'Space' && this.callbacks.onAction) {
             this.callbacks.onAction();
           }
-          this.updateMovement();
         });
 
-        window.addEventListener('keyup', (e) => {
-          if (e.key === 'w') this.keys.w = false;
-          if (e.key === 'a') this.keys.a = false;
-          if (e.key === 's') this.keys.s = false;
-          if (e.key === 'd') this.keys.d = false;
-          this.updateMovement();
+        document.addEventListener('keyup', (e) => {
+          keys[e.code] = false;
+          let dx = 0, dy = 0;
+          if (keys['KeyW']) dy -= 1;
+          if (keys['KeyS']) dy += 1;
+          if (keys['KeyA']) dx -= 1;
+          if (keys['KeyD']) dx += 1;
+          const mag = Math.sqrt(dx * dx + dy * dy);
+          if (mag > 0) {
+            dx /= mag;
+            dy /= mag;
+          }
+          if (this.callbacks.onMove) this.callbacks.onMove(dx, dy, false);
         });
-      }
 
-      updateMovement() {
-        let dx = 0, dy = 0;
-        if (this.keys.w) dy -= 1;
-        if (this.keys.s) dy += 1;
-        if (this.keys.a) dx -= 1;
-        if (this.keys.d) dx += 1;
-        if (this.callbacks.onMove && (dx !== 0 || dy !== 0)) {
-          const length = Math.sqrt(dx * dx + dy * dy);
-          this.callbacks.onMove(dx / length, dy / length, false);
-        } else if (this.callbacks.onMove) {
-          this.callbacks.onMove(dx, dy, false);
-        }
-      }
-
-      setupMouseControls() {
         this.canvas.addEventListener('mousemove', (e) => {
           const rect = this.canvas.getBoundingClientRect();
           const x = e.clientX - rect.left;
@@ -318,38 +392,71 @@
           if (this.callbacks.onAim) this.callbacks.onAim(x, y);
         });
 
+        let isMouseDown = false;
         this.canvas.addEventListener('mousedown', (e) => {
-          if (e.button === 0 && this.callbacks.onShoot) {
-            const rect = this.canvas.getBoundingClientRect();
-            const dx = (e.clientX - rect.left) - this.canvas.width / 2;
-            const dy = (e.clientY - rect.top) - this.canvas.height / 2;
-            const dist = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (this.canvas.width / 2));
-            this.callbacks.onShoot(dist, true);
-            clearInterval(this.shootInterval);
-            this.shootInterval = setInterval(() => {
-              this.callbacks.onShoot(dist, true);
-            }, 50);
-          }
+          isMouseDown = true;
+          const rect = this.canvas.getBoundingClientRect();
+          const dist = Math.min(1, Math.sqrt((e.clientX - rect.left - this.canvas.width / 2) ** 2 + (e.clientY - rect.top - this.canvas.height / 2) ** 2) / 100);
+          if (this.callbacks.onShoot) this.callbacks.onShoot(dist, true, 0, 0);
         });
 
-        this.canvas.addEventListener('mouseup', (e) => {
-          if (e.button === 0 && this.callbacks.onShoot) {
-            clearInterval(this.shootInterval);
-            this.shootInterval = null;
-            this.callbacks.onShoot(0, false);
-          }
+        document.addEventListener('mouseup', () => {
+          isMouseDown = false;
+          if (this.callbacks.onShoot) this.callbacks.onShoot(0, false, 0, 0);
         });
 
-        this.canvas.addEventListener('click', (e) => {
+        this.canvas.addEventListener('click', () => {
           if (this.callbacks.onRestart) this.callbacks.onRestart();
+        });
+      }
+
+      setupGameMenu() {
+        this.gameMenu.innerHTML = '';
+        this.gamesList.forEach(folderName => {
+          const displayName = this.formatGameName(folderName);
+          const button = document.createElement('button');
+          button.setAttribute('data-game', folderName);
+          button.textContent = displayName;
+          this.gameMenu.appendChild(button);
+        });
+
+        this.burgerMenu.addEventListener('click', () => {
+          this.burgerMenu.classList.toggle('open');
+          this.gameMenu.classList.toggle('open');
+        });
+
+        const gameButtons = this.gameMenu.querySelectorAll('button');
+        gameButtons.forEach(button => {
+          button.addEventListener('click', async () => {
+            const gameName = button.dataset.game;
+            if (!gameName) return;
+
+            this.burgerMenu.classList.remove('open');
+            this.gameMenu.classList.remove('open');
+
+            if (this.currentGame) {
+              this.callbacks = {};
+              this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            try {
+              const module = await import(`./games/${gameName}/game.js`);
+              this.currentGame = new module.default(this);
+            } catch (error) {
+              console.error(`Failed to load game ${gameName}:`, error);
+              this.ctx.fillStyle = '#F5F5F5';
+              this.ctx.font = '24px Arial, sans-serif';
+              this.ctx.textAlign = 'center';
+              this.ctx.textBaseline = 'middle';
+              this.ctx.fillText(`Failed to load ${gameName}`, this.canvas.width / 2, this.canvas.height / 2);
+              setTimeout(() => this.displayInitialMessage(), 2000);
+            }
+          });
         });
       }
     }
 
     const ui = new Interface();
-    const script = document.createElement('script');
-    script.src = 'game.js';
-    document.body.appendChild(script);
   </script>
 </body>
 </html>

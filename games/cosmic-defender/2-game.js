@@ -228,4 +228,4 @@ class CosmicDefenderGame {
   }
 }
 
-const game = new CosmicDefenderGame(ui);
+export default CosmicDefenderGame;
