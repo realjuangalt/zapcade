@@ -37,45 +37,12 @@
         }
         return gk_fileData[filename] || "";
         }
-        </script><script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-</script>
-<!DOCTYPE html>
+        </script><!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zapcade</title>
-  <script src="./game-select.js" type="module"></script>
   <style>
     body {
       margin: 0;
@@ -84,8 +51,8 @@
       flex-direction: column;
       align-items: center;
       font-family: Arial, sans-serif;
-      background: #1A1A1A;
-      color: #F5F5F5;
+      background: #1A1A1A; /* Matte black */
+      color: #F5F5F5; /* Light white */
       touch-action: none;
     }
     #header {
@@ -99,8 +66,8 @@
     #header h1 {
       margin: 0;
       font-size: 24px;
-      padding-left: 10px;
-      color: #F5F5F5;
+      padding-left: 10px; /* Added padding to the left of the title */
+      color: #F5F5F5; /* Light white */
     }
     #burger-menu {
       width: 30px;
@@ -110,12 +77,12 @@
       justify-content: space-between;
       cursor: pointer;
       z-index: 1000;
-      padding-right: 10px;
+      padding-right: 10px; /* Added padding to the right */
     }
     #burger-menu span {
       width: 100%;
       height: 3px;
-      background: #F7931A;
+      background: #F7931A; /* Bitcoin orange */
       transition: all 0.3s;
     }
     #burger-menu.open span:nth-child(1) {
@@ -133,7 +100,7 @@
       right: -100%;
       width: 200px;
       height: 100%;
-      background: #222;
+      background: #222; /* Dark gray */
       transition: right 0.3s;
       padding: 20px;
       box-sizing: border-box;
@@ -147,43 +114,43 @@
       width: 100%;
       padding: 10px;
       margin-bottom: 10px;
-      background: #555;
-      color: #F5F5F5;
+      background: #555; /* Medium gray */
+      color: #F5F5F5; /* Light white */
       border: none;
       cursor: pointer;
       font-size: 16px;
       text-align: left;
     }
     #game-menu button:hover {
-      background: #D3D3D3;
+      background: #D3D3D3; /* Light gray */
     }
     #canvas {
-      border: 2px solid #F7931A;
-      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5);
+      border: 2px solid #F7931A; /* Bitcoin orange border */
+      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5); /* Bitcoin orange glow */
       max-width: 400px;
       width: 90vw;
       height: calc(100vh - 210px);
-      background: #1A1A1A;
+      background: #1A1A1A; /* Matte black */
     }
     #controls {
       position: fixed;
       bottom: 0;
       width: 100%;
       max-width: 400px;
-      padding: 10px 10px 10px 10px;
+      padding: 10px 10px 10px 10px; /* Added padding-left and padding-right for edge spacing */
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(26, 26, 26, 0.5);
+      background: rgba(26, 26, 26, 0.5); /* Matte black with transparency */
     }
     .joystick {
       width: 100px;
       height: 100px;
-      background: rgba(85, 85, 85, 0.3);
+      background: rgba(85, 85, 85, 0.3); /* Medium gray with transparency */
       border-radius: 50%;
       position: relative;
       touch-action: none;
-      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5);
+      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5); /* Bitcoin orange glow */
     }
     #aim {
       width: 140px;
@@ -192,7 +159,7 @@
     .knob {
       width: 40px;
       height: 40px;
-      background: #F5F5F5;
+      background: #F5F5F5; /* Light white */
       border-radius: 50%;
       position: absolute;
       top: 50%;
@@ -202,16 +169,16 @@
     #action {
       width: 60px;
       height: 60px;
-      background: #F7931A;
-      color: #1A1A1A;
+      background: #F7931A; /* Bitcoin orange */
+      color: #1A1A1A; /* Matte black text */
       border: none;
       border-radius: 50%;
       font-size: 24px;
       cursor: pointer;
       touch-action: none;
-      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5),
-                 inset 0 0 10px rgba(245, 245, 245, 0.5),
-                 0 0 5px rgba(247, 147, 26, 0.3);
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5), /* Drop shadow */
+                 inset 0 0 10px rgba(245, 245, 245, 0.5), /* Inner light (light white) */
+                 0 0 5px rgba(247, 147, 26, 0.3); /* Bitcoin orange outer glow */
     }
   </style>
 </head>
@@ -225,6 +192,7 @@
     </div>
   </div>
   <div id="game-menu">
+    <!-- Buttons will be dynamically generated -->
   </div>
   <canvas id="canvas"></canvas>
   <div id="controls">
@@ -234,8 +202,6 @@
   </div>
 
   <script type="module">
-    import { GameSelector } from './game-select.js';
-
     class Interface {
       constructor() {
         this.canvas = document.getElementById('canvas');
@@ -247,10 +213,9 @@
         this.dpr = window.devicePixelRatio || 1;
         this.resizeCanvas();
         this.setupInputs();
-        this.gameSelector = new GameSelector(this);
         this.fetchGamesList().then(() => this.setupGameMenu());
         window.addEventListener('resize', () => this.resizeCanvas());
-        this.gameSelector.display();
+        this.displayInitialMessage();
       }
 
       async fetchGamesList() {
@@ -264,6 +229,7 @@
           console.log('Fetched games list:', this.gamesList);
         } catch (error) {
           console.error('Failed to fetch games list:', error);
+          // Fallback list in case games.json is missing
           this.gamesList = ['cosmic-defender', 'space-invaders', 'gorilla-rampage'];
         }
       }
@@ -275,42 +241,13 @@
           .join(' ');
       }
 
-      displayGameOver() {
+      displayInitialMessage() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = '#F5F5F5';
         this.ctx.font = '24px Arial, sans-serif';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText('Game Over', this.canvas.width / 2, this.canvas.height / 3);
-
-        const buttonWidth = 120;
-        const buttonHeight = 40;
-        const tryAgainX = this.canvas.width / 2 - buttonWidth - 10;
-        const changeGameX = this.canvas.width / 2 + 10;
-        const buttonY = this.canvas.height * 2 / 3;
-
-        this.ctx.fillStyle = '#F7931A';
-        this.ctx.fillRect(tryAgainX, buttonY, buttonWidth, buttonHeight);
-        this.ctx.fillRect(changeGameX, buttonY, buttonWidth, buttonHeight);
-        this.ctx.fillStyle = '#1A1A1A';
-        this.ctx.font = '16px Arial, sans-serif';
-        this.ctx.fillText('Try Again', tryAgainX + buttonWidth / 2, buttonY + buttonHeight / 2);
-        this.ctx.fillText('Change Game', changeGameX + buttonWidth / 2, buttonY + buttonHeight / 2);
-
-        this.canvas.onclick = (e) => {
-          const rect = this.canvas.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          if (x >= tryAgainX && x <= tryAgainX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
-            if (this.callbacks.onRestart) this.callbacks.onRestart();
-            this.canvas.onclick = null;
-          } else if (x >= changeGameX && x <= changeGameX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
-            this.currentGame = null;
-            this.callbacks = {};
-            this.gameSelector.display();
-            this.canvas.onclick = null;
-          }
-        };
+        this.ctx.fillText('Select a game from the menu', this.canvas.width / 2, this.canvas.height / 2);
       }
 
       setCallback(event, callback) {
@@ -328,7 +265,7 @@
         if (this.callbacks.onResize) {
           this.callbacks.onResize(cssWidth, cssHeight);
         } else {
-          this.gameSelector.display();
+          this.displayInitialMessage();
         }
       }
 
@@ -338,7 +275,7 @@
         const actionButton = document.getElementById('action');
 
         this.handleJoystick = (element, callback) => {
-          let touchId = null;
+          let touchId = null; // Tracks the specific touch for this joystick
           const knob = element.querySelector('.knob');
 
           const updateKnob = (touch) => {
@@ -375,9 +312,9 @@
 
           element.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (touchId !== null) return;
+            if (touchId !== null) return; // Ignore if already tracking a touch
             const touch = e.changedTouches[0];
-            touchId = touch.identifier;
+            touchId = touch.identifier; // Capture the touch identifier
             updateKnob(touch);
           });
 
@@ -385,7 +322,7 @@
             if (touchId === null) return;
             const touch = Array.from(e.touches).find(t => t.identifier === touchId);
             if (touch) {
-              updateKnob(touch);
+              updateKnob(touch); // Update only for the tracked touch
             }
           });
 
@@ -393,7 +330,7 @@
             if (touchId === null) return;
             const touch = Array.from(e.changedTouches).find(t => t.identifier === touchId);
             if (touch) {
-              touchId = null;
+              touchId = null; // Stop tracking when the touch ends
               knob.style.left = '50%';
               knob.style.top = '50%';
               callback(0, 0, 0);
@@ -466,7 +403,7 @@
           isMouseDown = true;
           const rect = this.canvas.getBoundingClientRect();
           const dist = Math.min(1, Math.sqrt((e.clientX - rect.left - this.canvas.width / 2) ** 2 + (e.clientY - rect.top - this.canvas.height / 2) ** 2) / 100);
-          if (this.callbacks.onShoot) this.callbacks.onShoot(dist2010/dist, true, 0, 0);
+          if (this.callbacks.onShoot) this.callbacks.onShoot(dist, true, 0, 0);
         });
 
         document.addEventListener('mouseup', () => {
@@ -518,7 +455,7 @@
               this.ctx.textAlign = 'center';
               this.ctx.textBaseline = 'middle';
               this.ctx.fillText(`Failed to load ${gameName}`, this.canvas.width / 2, this.canvas.height / 2);
-              setTimeout(() => this.gameSelector.display(), 2000);
+              setTimeout(() => this.displayInitialMessage(), 2000);
             }
           });
         });

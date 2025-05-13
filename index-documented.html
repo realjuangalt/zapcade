@@ -1,0 +1,735 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><script type="text/javascript">
+        // Declares a flag to indicate if the file is an XLSX file
+        var gk_isXlsx = false;
+        // Stores a lookup table for XLSX file data
+        var gk_xlsxFileLookup = {};
+        // Stores file data for all files
+        var gk_fileData = {};
+        // Checks if a cell is not empty or null
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        // Loads and processes file data based on filename
+        function loadFileData(filename) {
+        // Checks if the file is XLSX and exists in the lookup
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            // Attempts to process the XLSX file
+            try {
+                // Reads the XLSX file data from base64 format
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                // Gets the name of the first sheet
+                var firstSheetName = workbook.SheetNames[0];
+                // Retrieves the first worksheet
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Converts the sheet to JSON, excluding blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filters out rows where all cells are empty
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Finds the header row based on the number of filled cells
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Sets default header row to 0 if not found or too far
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Converts filtered data back to a CSV format
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                // Converts the sheet to CSV string
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                // Returns the processed CSV data
+                return csv;
+            // Handles errors during XLSX processing
+            } catch (e) {
+                // Logs the error to the console
+                console.error(e);
+                // Returns empty string on error
+                return "";
+            }
+        }
+        // Returns file data or empty string if not found
+        return gk_fileData[filename] || "";
+        }
+</script>
+<!-- Declares the document type as HTML5 -->
+<!DOCTYPE html>
+<!-- Defines the root HTML element with English language -->
+<html lang="en">
+<!-- Contains metadata and links to external resources -->
+<head>
+  <!-- Sets character encoding to UTF-8 -->
+  <meta charset="UTF-8">
+  <!-- Ensures responsive design for mobile devices -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Sets the page title to "Zapcade" -->
+  <title>Zapcade</title>
+  <!-- Begins the CSS style block -->
+  <style>
+    /* Styles the body for layout and appearance */
+    body {
+      margin: 0; /* Removes default margins */
+      padding: 0; /* Removes default padding */
+      display: flex; /* Uses flexbox for layout */
+      flex-direction: column; /* Arranges children vertically */
+      align-items: center; /* Centers children horizontally */
+      font-family: Arial, sans-serif; /* Sets font family */
+      background: #1A1A1A; /* Sets matte black background */
+      color: #F5F5F5; /* Sets light white text color */
+      touch-action: none; /* Disables default touch actions */
+    }
+    /* Styles the header container */
+    #header {
+      width: 100%; /* Sets full width */
+      max-width: 400px; /* Limits maximum width */
+      padding: 10px; /* Adds padding */
+      display: flex; /* Uses flexbox for layout */
+      justify-content: space-between; /* Spaces children evenly */
+      align-items: center; /* Centers children vertically */
+    }
+    /* Styles the header title */
+    #header h1 {
+      margin: 0; /* Removes default margin */
+      font-size: 24px; /* Sets font size */
+      padding-left: 10px; /* Adds left padding */
+      color: #F5F5F5; /* Sets light white color */
+    }
+    /* Styles the burger menu icon */
+    #burger-menu {
+      width: 30px; /* Sets width */
+      height: 20px; /* Sets height */
+      display: flex; /* Uses flexbox for layout */
+      flex-direction: column; /* Arranges lines vertically */
+      justify-content: space-between; /* Spaces lines evenly */
+      cursor: pointer; /* Indicates clickability */
+      z-index: 1000; /* Ensures high stacking order */
+      padding-right: 10px; /* Adds right padding */
+    }
+    /* Styles the burger menu lines */
+    #burger-menu span {
+      width: 100%; /* Sets full width */
+      height: 3px; /* Sets line thickness */
+      background: #F7931A; /* Sets Bitcoin orange color */
+      transition: all 0.3s; /* Smooths transitions */
+    }
+    /* Styles first line when menu is open */
+    #burger-menu.open span:nth-child(1) {
+      transform: rotate(45deg) translate(5px, 5px); /* Rotates and shifts */
+    }
+    /* Hides second line when menu is open */
+    #burger-menu.open span:nth-child(2) {
+      opacity: 0; /* Makes invisible */
+    }
+    /* Styles third line when menu is open */
+    #burger-menu.open span:nth-child(3) {
+      transform: rotate(-45deg) translate(5px, -5px); /* Rotates and shifts */
+    }
+    /* Styles the game menu panel */
+    #game-menu {
+      position: fixed; /* Fixes position relative to viewport */
+      top: 0; /* Aligns to top */
+      right: -100%; /* Hides off-screen to the right */
+      width: 200px; /* Sets width */
+      height: 100%; /* Sets full height */
+      background: #222; /* Sets dark gray background */
+      transition: right 0.3s; /* Smooths slide-in animation */
+      padding: 20px; /* Adds padding */
+      box-sizing: border-box; /* Includes padding in width */
+      z-index: 999; /* Ensures high stacking order */
+    }
+    /* Shows game menu when open */
+    #game-menu.open {
+      right: 0; /* Slides menu into view */
+    }
+    /* Styles buttons in the game menu */
+    #game-menu button {
+      display: block; /* Makes buttons block-level */
+      width: 100%; /* Sets full width */
+      padding: 10px; /* Adds padding */
+      margin-bottom: 10px; /* Adds bottom margin */
+      background: #555; /* Sets medium gray background */
+      color: #F5F5F5; /* Sets light white text */
+      border: none; /* Removes border */
+      cursor: pointer; /* Indicates clickability */
+      font-size: 16px; /* Sets font size */
+      text-align: left; /* Aligns text to the left */
+    }
+    /* Changes button background on hover */
+    #game-menu button:hover {
+      background: #D3D3D3; /* Sets light gray background */
+    }
+    /* Styles the game canvas */
+    #canvas {
+      border: 2px solid #F7931A; /* Adds Bitcoin orange border */
+      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5); /* Adds orange glow */
+      max-width: 400px; /* Limits maximum width */
+      width: 90vw; /* Sets width to 90% of viewport */
+      height: calc(100vh - 210px); /* Sets height minus header/controls */
+      background: #1A1A1A; /* Sets matte black background */
+    }
+    /* Styles the controls container */
+    #controls {
+      position: fixed; /* Fixes to bottom of viewport */
+      bottom: 0; /* Aligns to bottom */
+      width: 100%; /* Sets full width */
+      max-width: 400px; /* Limits maximum width */
+      padding: 10px 10px 10px 10px; /* Adds padding on all sides */
+      display: flex; /* Uses flexbox for layout */
+      justify-content: space-between; /* Spaces children evenly */
+      align-items: center; /* Centers children vertically */
+      background: rgba(26, 26, 26, 0.5); /* Sets transparent black background */
+    }
+    /* Styles joystick containers */
+    .joystick {
+      width: 100px; /* Sets width */
+      height: 100px; /* Sets height */
+      background: rgba(85, 85, 85, 0.3); /* Sets transparent gray background */
+      border-radius: 50%; /* Makes circular */
+      position: relative; /* Positions knob relatively */
+      touch-action: none; /* Disables default touch actions */
+      box-shadow: 0 0 10px rgba(247, 147, 26, 0.5); /* Adds orange glow */
+    }
+    /* Overrides width and height for aim joystick */
+    #aim {
+      width: 140px; /* Sets larger width */
+      height: 140px; /* Sets larger height */
+    }
+    /* Styles joystick knobs */
+    .knob {
+      width: 40px; /* Sets width */
+      height: 40px; /* Sets height */
+      background: #F5F5F5; /* Sets light white background */
+      border-radius: 50%; /* Makes circular */
+      position: absolute; /* Positions absolutely within joystick */
+      top: 50%; /* Centers vertically */
+      left: 50%; /* Centers horizontally */
+      transform: translate(-50%, -50%); /* Offsets to true center */
+    }
+    /* Styles the action button */
+    #action {
+      width: 60px; /* Sets width */
+      height: 60px; /* Sets height */
+      background: #F7931A; /* Sets Bitcoin orange background */
+      color: #1A1A1A; /* Sets matte black text */
+      border: none; /* Removes border */
+      border-radius: 50%; /* Makes circular */
+      font-size: 24px; /* Sets font size */
+      cursor: pointer; /* Indicates clickability */
+      touch-action: none; /* Disables default touch actions */
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5), /* Adds drop shadow */
+                 inset 0 0 10px rgba(245, 245, 245, 0.5), /* Adds inner glow */
+                 0 0 5px rgba(247, 147, 26, 0.3); /* Adds outer orange glow */
+    }
+  </style>
+<!-- Ends the head section -->
+</head>
+<!-- Contains the visible content of the webpage -->
+<body>
+  <!-- Header containing title and burger menu -->
+  <div id="header">
+    <!-- Displays the Zapcade title -->
+    <h1>Zapcade</h1>
+    <!-- Burger menu icon for game selection -->
+    <div id="burger-menu">
+      <!-- First line of burger menu icon -->
+      <span></span>
+      <!-- Second line of burger menu icon -->
+      <span></span>
+      <!-- Third line of burger menu icon -->
+      <span></span>
+    </div>
+  </div>
+  <!-- Game menu panel for selecting games -->
+  <div id="game-menu">
+    <!-- Buttons will be dynamically generated -->
+  </div>
+  <!-- Canvas for rendering game graphics -->
+  <canvas id="canvas"></canvas>
+  <!-- Controls container for joysticks and action button -->
+  <div id="controls">
+    <!-- Joystick for movement -->
+    <div id="move" class="joystick"><div class="knob"></div></div>
+    <!-- Action button labeled "B" -->
+    <button id="action">B</button>
+    <!-- Joystick for aiming -->
+    <div id="aim" class="joystick"><div class="knob"></div></div>
+  </div>
+
+  <!-- Begins the main JavaScript module -->
+  <script type="module">
+    // Defines the Interface class for managing the game UI
+    class Interface {
+      // Constructor initializes the interface
+      constructor() {
+        // Gets the canvas element
+        this.canvas = document.getElementById('canvas');
+        // Gets the 2D rendering context
+        this.ctx = this.canvas.getContext('2d');
+        // Stores event callbacks
+        this.callbacks = {};
+        // Gets the burger menu element
+        this.burgerMenu = document.getElementById('burger-menu');
+        // Gets the game menu element
+        this.gameMenu = document.getElementById('game-menu');
+        // Tracks the current game
+        this.currentGame = null;
+        // Gets device pixel ratio for high-DPI displays
+        this.dpr = window.devicePixelRatio || 1;
+        // Resizes canvas to fit screen
+        this.resizeCanvas();
+        // Sets up input handlers
+        this.setupInputs();
+        // Fetches the games list and sets up menu
+        this.fetchGamesList().then(() => this.setupGameMenu());
+        // Listens for window resize events
+        window.addEventListener('resize', () => this.resizeCanvas());
+        // Displays initial message on canvas
+        this.displayInitialMessage();
+      }
+
+      // Fetches the list of available games
+      async fetchGamesList() {
+        // Attempts to fetch games.json
+        try {
+          // Sends HTTP request for games.json
+          const response = await fetch('./games/games.json');
+          // Checks if response is successful
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          // Parses JSON response
+          const data = await response.json();
+          // Stores games list
+          this.gamesList = data.games;
+          // Logs successful fetch
+          console.log('Fetched games list:', this.gamesList);
+        // Handles fetch errors
+        } catch (error) {
+          // Logs error to console
+          console.error('Failed to fetch games list:', error);
+          // Sets fallback games list
+          this.gamesList = ['cosmic-defender', 'space-invaders', 'gorilla-rampage'];
+        }
+      }
+
+      // Formats game folder names for display
+      formatGameName(folderName) {
+        // Splits name by hyphens, capitalizes words
+        return folderName
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+      }
+
+      // Displays initial message on canvas
+      displayInitialMessage() {
+        // Clears the canvas
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Sets text color
+        this.ctx.fillStyle = '#F5F5F5';
+        // Sets font style
+        this.ctx.font = '24px Arial, sans-serif';
+        // Centers text horizontally
+        this.ctx.textAlign = 'center';
+        // Centers text vertically
+        this.ctx.textBaseline = 'middle';
+        // Displays instruction text
+        this.ctx.fillText('Select a game from the menu', this.canvas.width / 2, this.canvas.height / 2);
+      }
+
+      // Registers event callbacks
+      setCallback(event, callback) {
+        // Stores callback for the event
+        this.callbacks[event] = callback;
+      }
+
+      // Resizes canvas to fit screen
+      resizeCanvas() {
+        // Sets maximum width
+        const maxWidth = Math.min(400, window.innerWidth * 0.9);
+        // Calculates CSS width
+        const cssWidth = Math.min(maxWidth, window.innerWidth * 0.9);
+        // Gets current canvas height
+        const cssHeight = this.canvas.getBoundingClientRect().height;
+        // Sets canvas width
+        this.canvas.width = cssWidth;
+        // Sets canvas height
+        this.canvas.height = cssHeight;
+        // Sets CSS width
+        this.canvas.style.width = `${cssWidth}px`;
+        // Sets CSS height
+        this.canvas.style.height = `${cssHeight}px`;
+        // Calls resize callback if set
+        if (this.callbacks.onResize) {
+          this.callbacks.onResize(cssWidth, cssHeight);
+        // Displays initial message if no callback
+        } else {
+          this.displayInitialMessage();
+        }
+      }
+
+      // Sets up input event handlers
+      setupInputs() {
+        // Gets movement joystick element
+        const moveJoystick = document.getElementById('move');
+        // Gets aim joystick element
+        const aimJoystick = document.getElementById('aim');
+        // Gets action button element
+        const actionButton = document.getElementById('action');
+
+        // Defines joystick handling logic
+        this.handleJoystick = (element, callback) => {
+          // Tracks touch identifier
+          let touchId = null;
+          // Gets joystick knob
+          const knob = element.querySelector('.knob');
+
+          // Updates knob position and callback
+          const updateKnob = (touch) => {
+            // Exits if no touch
+            if (!touch) return;
+            // Gets joystick bounding rectangle
+            const rect = element.getBoundingClientRect();
+            // Calculates touch X position
+            const x = touch.clientX - rect.left;
+            // Calculates touch Y position
+            const y = touch.clientY - rect.top;
+            // Gets joystick center X
+            const centerX = rect.width / 2;
+            // Gets joystick center Y
+            const centerY = rect.height / 2;
+            // Sets maximum knob distance
+            const maxDist = rect.width / 2 - knob.offsetWidth / 2;
+            // Calculates X displacement
+            let dx = x - centerX;
+            // Calculates Y displacement
+            let dy = y - centerY;
+            // Calculates distance from center
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            // Limits displacement if too far
+            if (dist > maxDist) {
+              dx = (dx / dist) * maxDist;
+              dy = (dy / dist) * maxDist;
+            }
+            // Updates knob X position
+            knob.style.left = centerX + dx + 'px';
+            // Updates knob Y position
+            knob.style.top = centerY + dy + 'px';
+            // Normalizes X displacement
+            const normalizedDx = dx / maxDist;
+            // Normalizes Y displacement
+            const normalizedDy = dy / maxDist;
+            // Calculates magnitude
+            const mag = Math.sqrt(normalizedDx * normalizedDx + normalizedDy * normalizedDy);
+            // Checks if this is the aim joystick
+            const isAimJoystick = element.id === 'aim';
+            // Processes input if magnitude is significant
+            if (mag > 0.2) {
+              if (isAimJoystick) {
+                // Calls callback with normalized values for aim
+                callback(normalizedDx, normalizedDy, mag);
+              } else {
+                // Calls callback with unit vector for move
+                callback(normalizedDx / mag, normalizedDy / mag, mag);
+              }
+            } else {
+              // Calls callback with zero input
+              callback(0, 0, 0);
+            }
+          };
+
+          // Handles touch start events
+          element.addEventListener('touchstart', (e) => {
+            // Prevents default touch behavior
+            e.preventDefault();
+            // Ignores if already tracking a touch
+            if (touchId !== null) return;
+            // Gets first touch
+            const touch = e.changedTouches[0];
+            // Stores touch identifier
+            touchId = touch.identifier;
+            // Updates knob position
+            updateKnob(touch);
+          });
+
+          // Handles touch move events
+          element.addEventListener('touchmove', (e) => {
+            // Ignores if not tracking a touch
+            if (touchId === null) return;
+            // Finds matching touch
+            const touch = Array.from(e.touches).find(t => t.identifier === touchId);
+            // Updates knob if touch found
+            if (touch) {
+              updateKnob(touch);
+            }
+          });
+
+          // Handles touch end events
+          element.addEventListener('touchend', (e) => {
+            // Ignores if not tracking a touch
+            if (touchId === null) return;
+            // Finds matching touch
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === touchId);
+            // Resets knob if touch ended
+            if (touch) {
+              touchId = null;
+              knob.style.left = '50%';
+              knob.style.top = '50%';
+              callback(0, 0, 0);
+            }
+          });
+        };
+
+        // Sets up movement joystick
+        this.handleJoystick(moveJoystick, (dx, dy, mag) => {
+          // Calls move callback if set
+          if (this.callbacks.onMove) this.callbacks.onMove(dx, dy, true);
+        });
+
+        // Sets up aim joystick
+        this.handleJoystick(aimJoystick, (dx, dy, dist) => {
+          // Gets canvas bounding rectangle
+          const canvasRect = this.canvas.getBoundingClientRect();
+          // Calculates canvas center X
+          const centerX = canvasRect.left + this.canvas.width / 2;
+          // Calculates canvas center Y
+          const centerY = canvasRect.top + this.canvas.height / 2;
+          // Sets scaling factor
+          const scale = Math.max(this.canvas.width, this.canvas.height);
+          // Calculates aim X position
+          const aimX = centerX + dx * scale;
+          // Calculates aim Y position
+          const aimY = centerY + dy * scale;
+          // Calls aim callback if set
+          if (this.callbacks.onAim) this.callbacks.onAim(aimX - canvasRect.left, aimY - canvasRect.top);
+          // Calls shoot callback if set
+          if (this.callbacks.onShoot) this.callbacks.onShoot(dist, dist > 0.3, dx, dy);
+        });
+
+        // Sets up action button touch event
+        actionButton.addEventListener('touchstart', () => {
+          // Calls action callback if set
+          if (this.callbacks.onAction) this.callbacks.onAction();
+        });
+
+        // Tracks keyboard state
+        const keys = {};
+        // Handles keydown events
+        document.addEventListener('keydown', (e) => {
+          // Marks key as pressed
+          keys[e.code] = true;
+          // Initializes movement variables
+          let dx = 0, dy = 0;
+          // Updates Y for W key
+          if (keys['KeyW']) dy -= 1;
+          // Updates Y for S key
+          if (keys['KeyS']) dy += 1;
+          // Updates X for A key
+          if (keys['KeyA']) dx -= 1;
+          // Updates X for D key
+          if (keys['KeyD']) dx += 1;
+          // Calculates movement magnitude
+          const mag = Math.sqrt(dx * dx + dy * dy);
+          // Normalizes movement if significant
+          if (mag > 0) {
+            dx /= mag;
+            dy /= mag;
+            // Calls move callback
+            if (this.callbacks.onMove) this.callbacks.onMove(dx, dy, false);
+          }
+          // Calls action callback for spacebar
+          if (e.code === 'Space' && this.callbacks.onAction) {
+            this.callbacks.onAction();
+          }
+        });
+
+        // Handles keyup events
+        document.addEventListener('keyup', (e) => {
+          // Marks key as released
+          keys[e.code] = false;
+          // Initializes movement variables
+          let dx = 0, dy = 0;
+          // Updates Y for W key
+          if (keys['KeyW']) dy -= 1;
+          // Updates Y for S key
+          if (keys['KeyS']) dy += 1;
+          // Updates X for A key
+          if (keys['KeyA']) dx -= 1;
+          // Updates X for D key
+          if (keys['KeyD']) dx += 1;
+          // Calculates movement magnitude
+          const mag = Math.sqrt(dx * dx + dy * dy);
+          // Normalizes movement if significant
+          if (mag > 0) {
+            dx /= mag;
+            dy /= mag;
+          }
+          // Calls move callback
+          if (this.callbacks.onMove) this.callbacks.onMove(dx, dy, false);
+        });
+
+        // Handles mouse movement for aiming
+        this.canvas.addEventListener('mousemove', (e) => {
+          // Gets canvas bounding rectangle
+          const rect = this.canvas.getBoundingClientRect();
+          // Calculates X position
+          const x = e.clientX - rect.left;
+          // Calculates Y position
+          const y = e.clientY - rect.top;
+          // Calls aim callback if set
+          if (this.callbacks.onAim) this.callbacks.onAim(x, y);
+        });
+
+        // Tracks mouse button state
+        let isMouseDown = false;
+        // Handles mouse down events
+        this.canvas.addEventListener('mousedown', (e) => {
+          // Marks mouse as pressed
+          isMouseDown = true;
+          // Gets canvas bounding rectangle
+          const rect = this.canvas.getBoundingClientRect();
+          // Calculates distance from center
+          const dist = Math.min(1, Math.sqrt((e.clientX - rect.left - this.canvas.width / 2) ** 2 + (e.clientY - rect.top - this.canvas.height / 2) ** 2) / 100);
+          // Calls shoot callback if set
+          if (this.callbacks.onShoot) this.callbacks.onShoot(dist, true, 0, 0);
+        });
+
+        // Handles mouse up events
+        document.addEventListener('mouseup', () => {
+          // Marks mouse as released
+          isMouseDown = false;
+          // Calls shoot callback if set
+          if (this.callbacks.onShoot) this.callbacks.onShoot(0, false, 0, 0);
+        });
+
+        // Handles canvas clicks
+        this.canvas.addEventListener('click', () => {
+          // Calls restart callback if set
+          if (this.callbacks.onRestart) this.callbacks.onRestart();
+        });
+      }
+
+      // Sets up the game menu
+      setupGameMenu() {
+        // Clears existing menu content
+        this.gameMenu.innerHTML = '';
+        // Creates buttons for each game
+        this.gamesList.forEach(folderName => {
+          // Formats display name
+          const displayName = this.formatGameName(folderName);
+          // Creates button element
+          const button = document.createElement('button');
+          // Sets game data attribute
+          button.setAttribute('data-game', folderName);
+          // Sets button text
+          button.textContent = displayName;
+          // Adds button to menu
+          this.gameMenu.appendChild(button);
+        });
+
+        // Toggles menu visibility on click
+        this.burgerMenu.addEventListener('click', () => {
+          // Toggles open class for burger menu
+          this.burgerMenu.classList.toggle('open');
+          // Toggles open class for game menu
+          this.gameMenu.classList.toggle('open');
+        });
+
+        // Gets all game buttons
+        const gameButtons = this.gameMenu.querySelectorAll('button');
+        // Sets up click handlers for buttons
+        gameButtons.forEach(button => {
+          button.addEventListener('click', async () => {
+            // Gets game name from data attribute
+            const gameName = button.dataset.game;
+            // Exits if no game name
+            if (!gameName) return;
+
+            // Closes menu
+            this.burgerMenu.classList.remove('open');
+            this.gameMenu.classList.remove('open');
+
+            // Resets if a game is loaded
+            if (this.currentGame) {
+              // Clears callbacks
+              this.callbacks = {};
+              // Clears canvas
+              this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            // Attempts to load the game
+            try {
+              // Dynamically imports game module
+              const module = await import(`./games/${gameName}/game.js`);
+              // Instantiates new game
+              this.currentGame = new module.default(this);
+            // Handles load errors
+            } catch (error) {
+              // Logs error to console
+              console.error(`Failed to load game ${gameName}:`, error);
+              // Sets text color
+              this.ctx.fillStyle = '#F5F5F5';
+              // Sets font style
+              this.ctx.font = '24px Arial, sans-serif';
+              // Centers text horizontally
+              this.ctx.textAlign = 'center';
+              // Centers text vertically
+              this.ctx.textBaseline = 'middle';
+              // Displays error message
+              this.ctx.fillText(`Failed to load ${gameName}`, this.canvas.width / 2, this.canvas.height / 2);
+              // Reverts to initial message after delay
+              setTimeout(() => this.displayInitialMessage(), 2000);
+            }
+          });
+        });
+      }
+    }
+
+    // Creates a new Interface instance
+    const ui = new Interface();
+  </script>
+<!-- Ends the body section -->
+</body>
+<!-- Ends the HTML document -->
+</html>
