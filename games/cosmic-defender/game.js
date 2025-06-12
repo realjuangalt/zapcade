@@ -1,11 +1,13 @@
-class CosmicDefenderGame {
+export default class CosmicDefenderGame {
   constructor(ui) {
     this.ui = ui;
-    this.player = { 
-      x: this.ui.canvas.width / 2, // Dynamic initial position
-      y: this.ui.canvas.height - 50,
-      keyboardSpeed: 5, 
-      mobileSpeed: 2, 
+    this.canvasWidth = ui.width; // CSS pixels
+    this.canvasHeight = ui.height;
+    this.player = {
+      x: this.canvasWidth / 2,
+      y: this.canvasHeight - 50,
+      keyboardSpeed: 5,
+      mobileSpeed: 5,
       radius: 15,
       dx: 0,
       dy: 0
@@ -16,10 +18,10 @@ class CosmicDefenderGame {
     this.gameOver = false;
     this.weaponMode = 'Gun';
     this.bombAmmo = 5;
-    this.lastShot = 0;
+    this.lastShotTime = 0;
     this.shootCooldown = 200; // ms
     this.enemySpawnRate = 1000; // ms
-    this.lastSpawn = 0;
+    this.lastSpawnTime = 0;
     this.isMobileInput = false;
     this.autoShoot = true;
     this.isShooting = false;
@@ -29,10 +31,10 @@ class CosmicDefenderGame {
   init() {
     this.ui.setCallback('onMove', (dx, dy, isMobile) => this.handleMove(dx, dy, isMobile));
     this.ui.setCallback('onAim', (x, y) => this.handleAim(x, y));
-    this.ui.setCallback('onShoot', (dist, isActive) => this.handleShoot(dist, isActive));
-    this.ui.setCallback('onAction', () => this.toggleWeapon());
+    this.ui.setCallback('onShoot', (dist, isActive, dx, dy) => this.handleShoot(dist, isActive, dx, dy));
+    this.ui.setCallback('onAction', () => this.toggleWeaponMode());
     this.ui.setCallback('onRestart', () => this.restart());
-    this.ui.setCallback('onResize', (w, h) => this.handleResize(w, h));
+    this.ui.setCallback('onResize', (width, height) => this.handleResize(width, height));
     this.loop();
   }
 
@@ -49,19 +51,24 @@ class CosmicDefenderGame {
     this.aimY = y;
   }
 
-  handleShoot(dist, isActive) {
+  handleShoot(dist, isActive, dx, dy) {
     if (this.gameOver) return;
     this.isShooting = isActive;
     if (!this.autoShoot || !this.isShooting) return;
-    if (Date.now() - this.lastShot < this.shootCooldown) return;
-    this.lastShot = Date.now();
+    if (Date.now() - this.lastShotTime < this.shootCooldown) return;
+    this.lastShotTime = Date.now();
     const speedFactor = dist * 5;
+    const directionX = dx || (this.aimX - this.player.x) / 100;
+    const directionY = dy || (this.aimY - this.player.y) / 100;
+    const mag = Math.sqrt(directionX * directionX + directionY * directionY);
+    const normalizedDx = mag > 0 ? directionX / mag : 0;
+    const normalizedDy = mag > 0 ? directionY / mag : 0;
     if (this.weaponMode === 'Gun') {
       this.bullets.push({
         x: this.player.x,
         y: this.player.y,
-        dx: (this.aimX - this.player.x) / 100 * speedFactor,
-        dy: (this.aimY - this.player.y) / 100 * speedFactor,
+        dx: normalizedDx * speedFactor,
+        dy: normalizedDy * speedFactor,
         radius: 5,
         type: 'gun'
       });
@@ -69,8 +76,8 @@ class CosmicDefenderGame {
       this.bullets.push({
         x: this.player.x,
         y: this.player.y,
-        dx: (this.aimX - this.player.x) / 200 * speedFactor,
-        dy: (this.aimY - this.player.y) / 200 * speedFactor,
+        dx: normalizedDx * speedFactor * 0.5,
+        dy: normalizedDy * speedFactor * 0.5,
         radius: 10,
         type: 'bomb'
       });
@@ -78,16 +85,16 @@ class CosmicDefenderGame {
     }
   }
 
-  toggleWeapon() {
+  toggleWeaponMode() {
     if (this.gameOver) return;
     this.weaponMode = this.weaponMode === 'Gun' ? 'Bomb' : 'Gun';
   }
 
   spawnEnemy() {
-    if (Date.now() - this.lastSpawn < this.enemySpawnRate || this.gameOver) return;
-    this.lastSpawn = Date.now();
+    if (Date.now() - this.lastSpawnTime < this.enemySpawnRate || this.gameOver) return;
+    this.lastSpawnTime = Date.now();
     this.enemies.push({
-      x: Math.random() * (this.ui.canvas.width - 20) + 10,
+      x: Math.random() * (this.canvasWidth - 20) + 10,
       y: -10,
       radius: 10,
       speed: 1 + this.score / 100
@@ -105,22 +112,22 @@ class CosmicDefenderGame {
       const directionY = this.player.dy;
       this.player.x += directionX * speed;
       this.player.y += directionY * speed;
-      this.player.x = Math.max(this.player.radius, Math.min(this.ui.canvas.width - this.player.radius, this.player.x));
-      this.player.y = Math.max(this.player.radius, Math.min(this.ui.canvas.height - this.player.radius, this.player.y));
+      this.player.x = Math.max(this.player.radius, Math.min(this.canvasWidth - this.player.radius, this.player.x));
+      this.player.y = Math.max(this.player.radius, Math.min(this.canvasHeight - this.player.radius, this.player.y));
     }
 
     // Update bullets
     this.bullets = this.bullets.filter(b => {
       b.x += b.dx;
       b.y += b.dy;
-      return b.y > -b.radius && b.y < this.ui.canvas.height + b.radius &&
-             b.x > -b.radius && b.x < this.ui.canvas.width + b.radius;
+      return b.y > -b.radius && b.y < this.canvasHeight + b.radius &&
+             b.x > -b.radius && b.x < this.canvasWidth + b.radius;
     });
 
     // Update enemies
     this.enemies.forEach(e => {
       e.y += e.speed;
-      if (e.y > this.ui.canvas.height) {
+      if (e.y > this.canvasHeight) {
         this.enemies = this.enemies.filter(enemy => enemy !== e);
         this.score = Math.max(0, this.score - 5);
       }
@@ -149,7 +156,7 @@ class CosmicDefenderGame {
 
   render() {
     const ctx = this.ui.ctx;
-    ctx.clearRect(0, 0, this.ui.canvas.width, this.ui.canvas.height);
+    ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
 
     // Render player
     ctx.fillStyle = 'white';
@@ -185,13 +192,13 @@ class CosmicDefenderGame {
     // Game over screen
     if (this.gameOver) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(0, 0, this.ui.canvas.width, this.ui.canvas.height);
+      ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
       ctx.fillStyle = 'white';
       ctx.font = '40px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText('GAME OVER', this.ui.canvas.width / 2, this.ui.canvas.height / 2 - 20);
+      ctx.fillText('GAME OVER', this.canvasWidth / 2, this.canvasHeight / 2 - 20);
       ctx.font = '20px Arial';
-      ctx.fillText('Tap to Restart', this.ui.canvas.width / 2, this.ui.canvas.height / 2 + 20);
+      ctx.fillText('Tap to Restart', this.canvasWidth / 2, this.canvasHeight / 2 + 20);
     }
   }
 
@@ -203,11 +210,11 @@ class CosmicDefenderGame {
 
   restart() {
     if (!this.gameOver) return;
-    this.player = { 
-      x: this.ui.canvas.width / 2, // Dynamic restart position
-      y: this.ui.canvas.height - 50,
-      keyboardSpeed: 5, 
-      mobileSpeed: 2, 
+    this.player = {
+      x: this.canvasWidth / 2,
+      y: this.canvasHeight - 50,
+      keyboardSpeed: 5,
+      mobileSpeed: 5,
       radius: 15,
       dx: 0,
       dy: 0
@@ -223,9 +230,9 @@ class CosmicDefenderGame {
   }
 
   handleResize(width, height) {
-    this.player.x = width / 2;
-    this.player.y = height - 50;
+    this.canvasWidth = width;
+    this.canvasHeight = height;
+    this.player.x = Math.min(this.player.x, width - this.player.radius);
+    this.player.y = Math.min(this.player.y, height - this.player.radius);
   }
 }
-
-export default CosmicDefenderGame;

@@ -129,7 +129,6 @@
       box-shadow: 0 0 10px rgba(247, 147, 26, 0.5); /* Bitcoin orange glow */
       max-width: 400px;
       width: 90vw;
-      height: calc(100vh - 210px);
       background: #1A1A1A; /* Matte black */
     }
     #controls {
@@ -201,6 +200,39 @@
     <div id="aim" class="joystick"><div class="knob"></div></div>
   </div>
 
+  <script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+        try {
+          var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+          var firstSheetName = workbook.SheetNames[0];
+          var worksheet = workbook.Sheets[firstSheetName];
+          var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+          var filteredData = jsonData.filter(row => row.some(filledCell));
+          var headerRowIndex = filteredData.findIndex((row, index) =>
+            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+          );
+          if (headerRowIndex === -1 || headerRowIndex > 25) {
+            headerRowIndex = 0;
+          }
+          var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+          csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+          return csv;
+        } catch (e) {
+          console.error(e);
+          return "";
+        }
+      }
+      return gk_fileData[filename] || "";
+    }
+  </script>
+
   <script type="module">
     class Interface {
       constructor() {
@@ -209,8 +241,12 @@
         this.callbacks = {};
         this.burgerMenu = document.getElementById('burger-menu');
         this.gameMenu = document.getElementById('game-menu');
+        this.controls = document.getElementById('controls');
         this.currentGame = null;
         this.dpr = window.devicePixelRatio || 1;
+        this.defaultControls = this.controls.innerHTML;
+        this.width = 0; // CSS pixel width
+        this.height = 0; // CSS pixel height
         this.resizeCanvas();
         this.setupInputs();
         this.fetchGamesList().then(() => this.setupGameMenu());
@@ -229,7 +265,6 @@
           console.log('Fetched games list:', this.gamesList);
         } catch (error) {
           console.error('Failed to fetch games list:', error);
-          // Fallback list in case games.json is missing
           this.gamesList = ['cosmic-defender', 'space-invaders', 'gorilla-rampage'];
         }
       }
@@ -247,23 +282,50 @@
         this.ctx.font = '24px Arial, sans-serif';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText('Select a game from the menu', this.canvas.width / 2, this.canvas.height / 2);
+        this.ctx.fillText('Select a game from the menu', this.width / 2, this.height / 2);
+      }
+
+      setGameConfig(config) {
+        this.gameConfig = config || {};
+        this.gridMode = !!config.gridMode;
+        this.gridSize = config.gridSize || 8;
+        canvas.width = this.width * this.dpr;
+        canvas.height = this.height * this.dpr;
+        this.canvas.style.width = `${this.width}px`;
+        this.canvas.style.height = `${this.height}px`;
+        this.ctx.scale(this.dpr, this.dpr);
       }
 
       setCallback(event, callback) {
         this.callbacks[event] = callback;
       }
 
+      setCustomControls(html) {
+        this.controls.innerHTML = html;
+      }
+
+      resetControls() {
+        this.controls.innerHTML = this.defaultControls;
+        this.setupInputs();
+      }
+
       resizeCanvas() {
+        const header = document.getElementById('header');
+        const controls = document.getElementById('controls');
         const maxWidth = Math.min(400, window.innerWidth * 0.9);
         const cssWidth = Math.min(maxWidth, window.innerWidth * 0.9);
-        const cssHeight = this.canvas.getBoundingClientRect().height;
-        this.canvas.width = cssWidth;
-        this.canvas.height = cssHeight;
+        const headerHeight = header.getBoundingClientRect().height;
+        const controlsHeight = controls.getBoundingClientRect().height;
+        const cssHeight = window.innerHeight - headerHeight - controlsHeight - 20;
+        this.width = cssWidth;
+        this.height = cssHeight;
+        this.canvas.width = cssWidth * this.dpr;
+        this.canvas.height = cssHeight * this.dpr;
         this.canvas.style.width = `${cssWidth}px`;
         this.canvas.style.height = `${cssHeight}px`;
+        this.ctx.scale(this.dpr, this.dpr);
         if (this.callbacks.onResize) {
-          this.callbacks.onResize(cssWidth, cssHeight);
+          this.callbacks.onResize(this.width, this.height);
         } else {
           this.displayInitialMessage();
         }
@@ -274,8 +336,10 @@
         const aimJoystick = document.getElementById('aim');
         const actionButton = document.getElementById('action');
 
+        if (!moveJoystick || !aimJoystick || !actionButton) return;
+
         this.handleJoystick = (element, callback) => {
-          let touchId = null; // Tracks the specific touch for this joystick
+          let touchId = null;
           const knob = element.querySelector('.knob');
 
           const updateKnob = (touch) => {
@@ -312,9 +376,9 @@
 
           element.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (touchId !== null) return; // Ignore if already tracking a touch
+            if (touchId !== null) return;
             const touch = e.changedTouches[0];
-            touchId = touch.identifier; // Capture the touch identifier
+            touchId = touch.identifier;
             updateKnob(touch);
           });
 
@@ -322,15 +386,15 @@
             if (touchId === null) return;
             const touch = Array.from(e.touches).find(t => t.identifier === touchId);
             if (touch) {
-              updateKnob(touch); // Update only for the tracked touch
+              updateKnob(touch);
             }
-          });
+          }, { passive: true });
 
           element.addEventListener('touchend', (e) => {
             if (touchId === null) return;
             const touch = Array.from(e.changedTouches).find(t => t.identifier === touchId);
             if (touch) {
-              touchId = null; // Stop tracking when the touch ends
+              touchId = null;
               knob.style.left = '50%';
               knob.style.top = '50%';
               callback(0, 0, 0);
@@ -344,9 +408,9 @@
 
         this.handleJoystick(aimJoystick, (dx, dy, dist) => {
           const canvasRect = this.canvas.getBoundingClientRect();
-          const centerX = canvasRect.left + this.canvas.width / 2;
-          const centerY = canvasRect.top + this.canvas.height / 2;
-          const scale = Math.max(this.canvas.width, this.canvas.height);
+          const centerX = canvasRect.left + this.width / 2;
+          const centerY = canvasRect.top + this.height / 2;
+          const scale = Math.max(this.width, this.height);
           const aimX = centerX + dx * scale;
           const aimY = centerY + dy * scale;
           if (this.callbacks.onAim) this.callbacks.onAim(aimX - canvasRect.left, aimY - canvasRect.top);
@@ -391,7 +455,12 @@
           if (this.callbacks.onMove) this.callbacks.onMove(dx, dy, false);
         });
 
-        this.canvas.addEventListener('mousemove', (e) => {
+        let lastMoveTime = 0;
+        const DEBOUNCE_DELAY = 16; // ~60fps
+        canvas.addEventListener('mousemove', (e) => {
+          const now = performance.now();
+          if (now - lastMoveTime < DEBOUNCE_DELAY) return;
+          lastMoveTime = now;
           const rect = this.canvas.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
@@ -399,10 +468,10 @@
         });
 
         let isMouseDown = false;
-        this.canvas.addEventListener('mousedown', (e) => {
+        canvas.addEventListener('mousedown', (e) => {
           isMouseDown = true;
           const rect = this.canvas.getBoundingClientRect();
-          const dist = Math.min(1, Math.sqrt((e.clientX - rect.left - this.canvas.width / 2) ** 2 + (e.clientY - rect.top - this.canvas.height / 2) ** 2) / 100);
+          const dist = Math.min(1, Math.sqrt((e.clientX - rect.left - this.width / 2) ** 2 + (e.clientY - rect.top - this.height / 2) ** 2) / 100);
           if (this.callbacks.onShoot) this.callbacks.onShoot(dist, true, 0, 0);
         });
 
@@ -411,8 +480,31 @@
           if (this.callbacks.onShoot) this.callbacks.onShoot(0, false, 0, 0);
         });
 
-        this.canvas.addEventListener('click', () => {
+        canvas.addEventListener('click', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          if (this.callbacks.place) this.callbacks.place(x, y);
           if (this.callbacks.onRestart) this.callbacks.onRestart();
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+          const now = performance.now();
+          if (now - lastMoveTime < DEBOUNCE_DELAY) return;
+          lastMoveTime = now;
+          const touch = e.touches[0];
+          const rect = this.canvas.getBoundingClientRect();
+          const x = touch.pageX - rect.left;
+          const y = touch.pageY - rect.top;
+          if (this.callbacks.onAim) this.callbacks.onAim(x, y);
+        }, { passive: true });
+
+        canvas.addEventListener('touchend', (e) => {
+          const touch = e.changedTouches[0];
+          const rect = this.canvas.getBoundingClientRect();
+          const x = touch.pageX - rect.left;
+          const y = touch.pageY - rect.top;
+          if (this.callbacks.place) this.callbacks.place(x, y);
         });
       }
 
@@ -443,18 +535,21 @@
             if (this.currentGame) {
               this.callbacks = {};
               this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+              this.resetControls();
             }
 
             try {
               const module = await import(`./games/${gameName}/game.js`);
               this.currentGame = new module.default(this);
+              this.currentGame.ui.setGameConfig({ gridMode: this.currentGame.gridMode, gridSize: this.currentGame.gridSize });
+              this.currentGame.init();
             } catch (error) {
               console.error(`Failed to load game ${gameName}:`, error);
               this.ctx.fillStyle = '#F5F5F5';
               this.ctx.font = '24px Arial, sans-serif';
               this.ctx.textAlign = 'center';
               this.ctx.textBaseline = 'middle';
-              this.ctx.fillText(`Failed to load ${gameName}`, this.canvas.width / 2, this.canvas.height / 2);
+              this.ctx.fillText(`Failed to load ${gameName}`, this.width / 2, this.height / 2);
               setTimeout(() => this.displayInitialMessage(), 2000);
             }
           });
