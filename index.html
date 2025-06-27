@@ -231,6 +231,10 @@
     class Interface {
       constructor() {
         this.canvas = document.getElementById('canvas');
+        if (!this.canvas) {
+          console.error('Canvas element not found');
+          return;
+        }
         this.ctx = this.canvas.getContext('2d');
         this.gameMenu = document.getElementById('game-menu');
         this.controls = document.getElementById('controls');
@@ -242,7 +246,7 @@
         this.height = 0;
         this.isMenuActive = true;
         this.gamesList = [];
-        this.loading = true; // Add loading state
+        this.loading = true;
         this.resizeCanvas();
         this.setupInputs();
         this.fetchGamesList().then(() => {
@@ -506,7 +510,7 @@
           this.ctx.textAlign = 'center';
           this.ctx.textBaseline = 'middle';
           this.ctx.fillText(`Failed to load ${gameName}.`, this.width / 2, this.height / 2 - 20);
-          this.ctx.fillText('Please run on GitHub Pages', this.width / 2, this.height / 2 + 20);
+          this.ctx.fillText('Please run on GitHub Pages (dev.zapcade.fun)', this.width / 2, this.height / 2 + 20);
           setTimeout(() => this.loadGame('menu'), 3000);
         }
       }

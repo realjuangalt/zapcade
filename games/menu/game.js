@@ -1,7 +1,11 @@
 export default class GameMenu {
   constructor(ui) {
+    if (!ui || !ui.canvas) {
+      console.error('Invalid UI object or canvas undefined', ui);
+      return; // Prevent further execution if UI or canvas is invalid
+    }
     this.ui = ui;
-    this.canvas = ui.canvas; // Ensure canvas is assigned
+    this.canvas = ui.canvas;
     this.canvasWidth = ui.width;
     this.canvasHeight = ui.height;
     this.games = [];
@@ -18,15 +22,19 @@ export default class GameMenu {
 
   async init() {
     if (!this.canvas) {
-      console.error('Canvas is undefined in GameMenu');
-      return;
+      console.error('Canvas is undefined in GameMenu init');
+      return; // Exit if canvas is still undefined
     }
     this.ui.setCallback('onResize', (w, h) => this.handleResize(w, h));
     this.ui.setCallback('place', (x, y) => this.handlePlace(x, y));
     this.ui.resetControls();
-    await this.loadGamesList();
-    this.setupScrollListeners();
-    this.loop();
+    await this.loadGamesList().catch(err => console.error('Load games list failed:', err));
+    if (this.games.length > 0) {
+      this.setupScrollListeners();
+      this.loop();
+    } else {
+      console.warn('No games loaded, skipping render');
+    }
   }
 
   async loadGamesList() {
@@ -41,13 +49,14 @@ export default class GameMenu {
         try {
           const img = new Image();
           img.src = `./games/${name}/thumbnail.png`;
-          await new Promise((resolve) => {
-            img.onload = () => { thumbnail = img; resolve(); };
-            img.onerror = () => resolve(null); // Fallback to null if thumbnail fails
+          await new Promise((resolve, reject) => {
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error(`Thumbnail ${name} failed to load`));
           });
+          thumbnail = img;
         } catch (e) {
-          console.warn(`Thumbnail load failed for ${name}:`, e);
-          thumbnail = null;
+          console.warn(`Thumbnail load failed for ${name}:`, e.message);
+          thumbnail = null; // Explicitly set to null on error
         }
         return { name, thumbnail, displayName: this.formatGameName(name) };
       }));
@@ -74,12 +83,15 @@ export default class GameMenu {
   }
 
   setupScrollListeners() {
-    if (!this.canvas) return; // Safety check
+    if (!this.canvas) {
+      console.error('Canvas is undefined in setupScrollListeners');
+      return;
+    }
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       this.scrollY += e.deltaY * this.scrollSpeed / 100;
       this.clampScroll();
-    });
+    }, { passive: false });
 
     this.canvas.addEventListener('touchstart', (e) => {
       this.lastTouchY = e.touches[0].clientY;
@@ -96,7 +108,7 @@ export default class GameMenu {
 
     this.canvas.addEventListener('touchend', () => {
       this.lastTouchY = null;
-    });
+    }, { passive: true });
   }
 
   clampScroll() {
