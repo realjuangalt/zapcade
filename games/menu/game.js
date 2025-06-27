@@ -1,11 +1,12 @@
 export default class GameMenu {
   constructor(ui) {
-    if (!ui || !ui.canvas) {
-      console.error('Invalid UI object or canvas undefined', ui);
-      return; // Prevent further execution if UI or canvas is invalid
+    if (!ui || !ui.canvas || !ui.ctx || !ui.width || !ui.height) {
+      console.error('Invalid UI object:', ui);
+      return; // Prevent execution if UI properties are invalid
     }
     this.ui = ui;
     this.canvas = ui.canvas;
+    this.ctx = ui.ctx;
     this.canvasWidth = ui.width;
     this.canvasHeight = ui.height;
     this.games = [];
@@ -21,19 +22,23 @@ export default class GameMenu {
   }
 
   async init() {
-    if (!this.canvas) {
-      console.error('Canvas is undefined in GameMenu init');
-      return; // Exit if canvas is still undefined
+    if (!this.canvas || !this.ctx) {
+      console.error('Canvas or context is undefined in GameMenu init', { canvas: this.canvas, ctx: this.ctx });
+      return; // Exit if canvas or context is still undefined
     }
     this.ui.setCallback('onResize', (w, h) => this.handleResize(w, h));
     this.ui.setCallback('place', (x, y) => this.handlePlace(x, y));
     this.ui.resetControls();
-    await this.loadGamesList().catch(err => console.error('Load games list failed:', err));
-    if (this.games.length > 0) {
-      this.setupScrollListeners();
-      this.loop();
-    } else {
-      console.warn('No games loaded, skipping render');
+    try {
+      await this.loadGamesList();
+      if (this.games.length > 0) {
+        this.setupScrollListeners();
+        this.loop();
+      } else {
+        console.warn('No games loaded, skipping render');
+      }
+    } catch (error) {
+      console.error('Initialization failed:', error);
     }
   }
 
@@ -49,14 +54,17 @@ export default class GameMenu {
         try {
           const img = new Image();
           img.src = `./games/${name}/thumbnail.png`;
-          await new Promise((resolve, reject) => {
+          await new Promise((resolve) => {
             img.onload = () => resolve(img);
-            img.onerror = () => reject(new Error(`Thumbnail ${name} failed to load`));
+            img.onerror = () => resolve(null); // Resolve with null on error, no rejection
           });
+          if (img.complete && img.naturalHeight === 0) {
+            throw new Error('Invalid thumbnail image');
+          }
           thumbnail = img;
         } catch (e) {
           console.warn(`Thumbnail load failed for ${name}:`, e.message);
-          thumbnail = null; // Explicitly set to null on error
+          thumbnail = null; // Ensure fallback
         }
         return { name, thumbnail, displayName: this.formatGameName(name) };
       }));
