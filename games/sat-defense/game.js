@@ -282,8 +282,7 @@ export default class SatDefense {
       const enemy = this.game.enemies[i];
       enemy.update();
       if (enemy.health <= 0) {
-        this.game.enemies.splice(i, 1);
-        this.logEvent(`Enemy removed, ${this.game.enemies.length} enemies remain`);
+        this.game.enemies.splice(i, 1); // Ensure removal
       }
     }
     for (let i = this.game.projectiles.length - 1; i >= 0; i--) {
@@ -450,10 +449,9 @@ export default class SatDefense {
   }
 
   checkWaveEnd() {
-    this.logEvent(`Checking wave end: enemies=${this.game.enemies.length}, enemiesToSpawn=${this.game.enemiesToSpawn}, spawnIntervalId=${!!this.game.spawnIntervalId}, waveActive=${this.game.waveActive}, gameOver=${this.game.gameOver}`);
-    if (this.game.waveActive && this.game.enemies.length === 0 && this.game.enemiesToSpawn === 0 && !this.game.spawnIntervalId && !this.game.gameOver) {
+    // Simplified wave end check
+    if (this.game.waveActive && this.game.enemies.length === 0 && this.game.enemiesToSpawn === 0 && !this.game.spawnIntervalId) {
       this.game.waveActive = false;
-      this.logEvent('Wave ended, setting waveActive to false');
       this.game.maxTowerPoints++;
       if (this.game.baseHealthLost > 0) {
         const restored = Math.floor(this.game.baseHealthLost / 2);
