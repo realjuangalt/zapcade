@@ -1,6 +1,7 @@
 export default class GameMenu {
   constructor(ui) {
     this.ui = ui;
+    this.canvas = ui.canvas; // Ensure canvas is assigned
     this.canvasWidth = ui.width;
     this.canvasHeight = ui.height;
     this.games = [];
@@ -16,6 +17,10 @@ export default class GameMenu {
   }
 
   async init() {
+    if (!this.canvas) {
+      console.error('Canvas is undefined in GameMenu');
+      return;
+    }
     this.ui.setCallback('onResize', (w, h) => this.handleResize(w, h));
     this.ui.setCallback('place', (x, y) => this.handlePlace(x, y));
     this.ui.resetControls();
@@ -38,9 +43,10 @@ export default class GameMenu {
           img.src = `./games/${name}/thumbnail.png`;
           await new Promise((resolve) => {
             img.onload = () => { thumbnail = img; resolve(); };
-            img.onerror = () => resolve();
+            img.onerror = () => resolve(null); // Fallback to null if thumbnail fails
           });
-        } catch {
+        } catch (e) {
+          console.warn(`Thumbnail load failed for ${name}:`, e);
           thumbnail = null;
         }
         return { name, thumbnail, displayName: this.formatGameName(name) };
@@ -68,6 +74,7 @@ export default class GameMenu {
   }
 
   setupScrollListeners() {
+    if (!this.canvas) return; // Safety check
     this.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       this.scrollY += e.deltaY * this.scrollSpeed / 100;
@@ -151,7 +158,7 @@ export default class GameMenu {
         ctx.drawImage(game.thumbnail, x + 5, y + 5, this.cardWidth - 10, this.cardHeight - 10);
       } else {
         ctx.fillStyle = '#F5F5F5';
-        ctx.font = '14px Arial, sans-serif'; // Adjusted font size
+        ctx.font = '14px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(game.displayName, x + this.cardWidth / 2, y + this.cardHeight / 2);
