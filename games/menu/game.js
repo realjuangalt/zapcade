@@ -4,11 +4,14 @@ export default class GameMenu {
     this.canvasWidth = ui.width;
     this.canvasHeight = ui.height;
     this.games = [];
+    this.scrollY = 0;
+    this.scrollSpeed = 5;
+    this.lastTouchY = null;
     this.selectedIndex = null;
-    this.cardWidth = 120;
-    this.cardHeight = 160;
-    this.cardGap = 20;
-    this.padding = 20;
+    this.cardWidth = 200; // Landscape width
+    this.cardHeight = 120; // Landscape height
+    this.cardGap = 10;
+    this.padding = 10;
     this.init();
   }
 
@@ -17,6 +20,7 @@ export default class GameMenu {
     this.ui.setCallback('place', (x, y) => this.handlePlace(x, y));
     this.ui.resetControls();
     await this.loadGamesList();
+    this.setupScrollListeners();
     this.loop();
   }
 
@@ -63,10 +67,40 @@ export default class GameMenu {
     this.canvasHeight = height;
   }
 
+  setupScrollListeners() {
+    this.canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      this.scrollY += e.deltaY * this.scrollSpeed / 100;
+      this.clampScroll();
+    });
+
+    this.canvas.addEventListener('touchstart', (e) => {
+      this.lastTouchY = e.touches[0].clientY;
+    }, { passive: true });
+
+    this.canvas.addEventListener('touchmove', (e) => {
+      if (this.lastTouchY !== null) {
+        const deltaY = e.touches[0].clientY - this.lastTouchY;
+        this.scrollY -= deltaY * this.scrollSpeed / 50;
+        this.clampScroll();
+        this.lastTouchY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    this.canvas.addEventListener('touchend', () => {
+      this.lastTouchY = null;
+    });
+  }
+
+  clampScroll() {
+    const totalHeight = Math.ceil(this.games.length / Math.floor((this.canvasWidth - this.padding * 2) / (this.cardWidth + this.cardGap))) * (this.cardHeight + this.cardGap) - this.cardGap + this.padding * 2;
+    this.scrollY = Math.max(0, Math.min(this.scrollY, totalHeight - this.canvasHeight));
+  }
+
   handlePlace(x, y) {
     const cardsPerRow = Math.floor((this.canvasWidth - this.padding * 2) / (this.cardWidth + this.cardGap));
     const startX = this.padding + (this.canvasWidth - cardsPerRow * (this.cardWidth + this.cardGap) + this.cardGap) / 2;
-    const startY = this.padding;
+    const startY = this.padding - this.scrollY;
 
     this.games.forEach((game, index) => {
       if (game.name === 'menu') return;
@@ -94,7 +128,7 @@ export default class GameMenu {
 
     const cardsPerRow = Math.floor((this.canvasWidth - this.padding * 2) / (this.cardWidth + this.cardGap));
     const startX = this.padding + (this.canvasWidth - cardsPerRow * (this.cardWidth + this.cardGap) + this.cardGap) / 2;
-    const startY = this.padding;
+    const startY = this.padding - this.scrollY;
 
     this.games.forEach((game, index) => {
       if (game.name === 'menu') return;
@@ -114,10 +148,10 @@ export default class GameMenu {
       ctx.restore();
 
       if (game.thumbnail) {
-        ctx.drawImage(game.thumbnail, x + 10, y + 10, this.cardWidth - 20, this.cardHeight - 20);
+        ctx.drawImage(game.thumbnail, x + 5, y + 5, this.cardWidth - 10, this.cardHeight - 10);
       } else {
         ctx.fillStyle = '#F5F5F5';
-        ctx.font = '16px Arial, sans-serif';
+        ctx.font = '14px Arial, sans-serif'; // Adjusted font size
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(game.displayName, x + this.cardWidth / 2, y + this.cardHeight / 2);

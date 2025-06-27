@@ -37,7 +37,39 @@
         }
         return gk_fileData[filename] || "";
         }
-        </script><!DOCTYPE html>
+        </script><script type="text/javascript">
+  var gk_isXlsx = false;
+  var gk_xlsxFileLookup = {};
+  var gk_fileData = {};
+  function filledCell(cell) {
+    return cell !== '' && cell != null;
+  }
+  function loadFileData(filename) {
+    if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+      try {
+        var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+        var firstSheetName = workbook.SheetNames[0];
+        var worksheet = workbook.Sheets[firstSheetName];
+        var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+        var filteredData = jsonData.filter(row => row.some(filledCell));
+        var headerRowIndex = filteredData.findIndex((row, index) =>
+          row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+        );
+        if (headerRowIndex === -1 || headerRowIndex > 25) {
+          headerRowIndex = 0;
+        }
+        var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+        csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+        return csv;
+      } catch (e) {
+        console.error(e);
+        return "";
+      }
+    }
+    return gk_fileData[filename] || "";
+  }
+</script>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -210,9 +242,13 @@
         this.height = 0;
         this.isMenuActive = true;
         this.gamesList = [];
+        this.loading = true; // Add loading state
         this.resizeCanvas();
         this.setupInputs();
-        this.fetchGamesList().then(() => this.loadGame('menu'));
+        this.fetchGamesList().then(() => {
+          this.loading = false;
+          this.loadGame('menu');
+        });
         window.addEventListener('resize', () => this.resizeCanvas());
       }
 
@@ -277,14 +313,8 @@
         this.canvas.style.width = `${cssWidth}px`;
         this.canvas.style.height = `${cssHeight}px`;
         this.ctx.scale(this.dpr, this.dpr);
-        if (this.callbacks.onResize) {
+        if (!this.loading && this.callbacks.onResize) {
           this.callbacks.onResize(this.width, this.height);
-        } else {
-          this.ctx.fillStyle = '#F5F5F5';
-          this.ctx.font = '24px Arial, sans-serif';
-          this.ctx.textAlign = 'center';
-          this.ctx.textBaseline = 'middle';
-          this.ctx.fillText('Select a game', this.width / 2, this.height / 2);
         }
       }
 
