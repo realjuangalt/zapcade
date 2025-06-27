@@ -111,8 +111,8 @@ export default class SatDefense {
         const handleClick = (e) => {
           if (this.game.buttonActive) return; // Debounce to prevent multiple triggers
           e.preventDefault();
-          e.stopPropagation(); // Prevent canvas from intercepting
           this.game.buttonActive = true;
+          console.log(`${eventName} button clicked`); // Minimal debug
           this.logEvent(`${eventName} button clicked`);
           this.logEvent(`State: waveActive=${this.game.waveActive}, gameOver=${this.game.gameOver}, sats=${this.game.sats}, enemies=${this.game.enemies.length}, enemiesToSpawn=${this.game.enemiesToSpawn}, spawnIntervalId=${!!this.game.spawnIntervalId}`);
 
@@ -131,9 +131,8 @@ export default class SatDefense {
             this.game.buttonActive = false;
           }, 500); // Debounce delay
         };
-        button.addEventListener('touchstart', handleClick);
-        button.addEventListener('click', handleClick);
-        button.focus(); // Ensure button can receive focus
+        button.addEventListener('touchstart', handleClick, { once: true });
+        button.addEventListener('click', handleClick, { once: true });
       };
 
       handleButtonClick(towerButton, 'Firewall Tower', function() {
@@ -243,8 +242,7 @@ export default class SatDefense {
     this.aimY = null;
     this.clickActive = false;
     this.lastClickTime = 0;
-    Enemy.baseSpeed = 2; // Reset enemy base speed on restart
-    this.logEvent('Game restarted, enemy speed reset to 2');
+    this.logEvent('Game restarted');
     this.updateUI();
     this.loop();
   }
@@ -494,7 +492,6 @@ export default class SatDefense {
     if (towerButton) {
       towerButton.disabled = this.game.waveActive || this.game.gameOver || this.game.sats < 7 || this.game.towers.length >= this.game.maxTowerPoints;
       towerButton.classList.toggle('active', this.game.placementMode === 'firewall' && !towerButton.disabled);
-      console.log('Tower button state:', { disabled: towerButton.disabled, active: towerButton.classList.contains('active') });
     }
     const repairsButton = document.getElementById('small-repairs');
     if (repairsButton) {
@@ -505,7 +502,6 @@ export default class SatDefense {
     if (startWaveButton) {
       startWaveButton.disabled = this.game.waveActive || this.game.gameOver;
       startWaveButton.classList.toggle('active', !this.game.waveActive && !this.game.gameOver);
-      console.log('Start Wave button state:', { disabled: startWaveButton.disabled, active: startWaveButton.classList.contains('active') });
     }
     const clearTowersButton = document.getElementById('clear-towers');
     if (clearTowersButton) {
@@ -519,5 +515,192 @@ export default class SatDefense {
       rangeButton.disabled = this.game.waveActive || this.game.gameOver || this.game.sats < rangeCost || this.base.range >= this.canvasWidth / 2 - 50;
       rangeButton.classList.toggle('active', !this.game.waveActive && !this.game.gameOver && this.game.sats >= rangeCost && this.base.range < this.canvasWidth / 2 - 50);
     }
+  }
+}
+
+class Tower {
+  constructor(x, y, type = 'firewall', canvasWidth, canvasHeight, getNearestEnemy, game, logEvent) {
+    this.x = x;
+    this.y = y;
+    this.type = type;
+    this.radius = 12;
+    this.range = 80;
+    this.damage = 1;
+    this.fireRate = 1000;
+    this.lastShot = 0;
+    this.health = 7;
+    this.cost = 7;
+    this.canvasWidth = canvasWidth;
+    this.canvasHeight = canvasHeight;
+    this.getNearestEnemy = getNearestEnemy;
+    this.game = game;
+    this.logEvent = logEvent;
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.strokeStyle = '#ffff00';
+    ctx.lineWidth = 1;
+    ctx.shadowColor = '#ffff00';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i;
+      const x = this.x + this.radius * Math.cos(angle);
+      const y = this.y + this.radius * Math.sin(angle);
+      ctx[i === 0 ? 'moveTo' : 'lineTo'](x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  update() {
+    if (Date.now() - this.lastShot < this.fireRate) return;
+    const target = this.getNearestEnemy(this.x, this.y, this.range);
+    if (target) {
+      this.game.projectiles.push(new Projectile(this.x, this.y, target, this.damage, this.game, this.logEvent));
+      this.lastShot = Date.now();
+    }
+  }
+}
+
+class Enemy {
+  constructor(x, y, type = 'basic', base, game, logEvent) {
+    this.x = x;
+    this.y = y;
+    this.type = type;
+    this.size = 10;
+    this.health = 3;
+    this.speed = 2; // Explicitly set speed
+    this.rewardModifier = 1;
+    this.damage = 3;
+    this.base = base;
+    this.game = game;
+    this.logEvent = logEvent;
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.strokeStyle = '#ff0000';
+    ctx.lineWidth = 1;
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y - this.size);
+    ctx.lineTo(this.x + this.size * Math.cos(Math.PI / 6), this.y + this.size * Math.sin(Math.PI / 6));
+    ctx.lineTo(this.x - this.size * Math.cos(Math.PI / 6), this.y + this.size * Math.sin(Math.PI / 6));
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+  }
+  update() {
+    const dx = this.base.x - this.x;
+    const dy = this.base.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < this.base.radius + this.size) {
+      const damage = Math.min(this.base.health, this.damage);
+      this.base.health -= damage;
+      this.game.baseHealthLost += damage;
+      this.logEvent(`Enemy reached base, -${damage} health`);
+      this.health = 0;
+      return;
+    }
+    const vx = (dx / dist) * this.speed;
+    const vy = (dy / dist) * this.speed;
+    this.x += vx;
+    this.y += vy;
+  }
+}
+
+class Projectile {
+  constructor(x, y, target, damage, game, logEvent) {
+    this.x = x;
+    this.y = y;
+    this.target = target;
+    this.damage = damage;
+    this.speed = 5;
+    this.radius = 2;
+    this.game = game;
+    this.logEvent = logEvent;
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 0.5;
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  update() {
+    if (!this.target || this.target.health <= 0) return false;
+    const dx = this.target.x - this.x;
+    const dy = this.target.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < this.speed) {
+      this.target.health -= this.damage;
+      if (this.target.health <= 0) {
+        this.game.sats += 5 * this.target.rewardModifier;
+        this.logEvent(`Enemy defeated, +${5 * this.target.rewardModifier} sats`);
+        this.game.explosions.push(new Explosion(this.target.x, this.target.y));
+      }
+      return false;
+    }
+    const vx = (dx / dist) * this.speed;
+    const vy = (dy / dist) * this.speed;
+    this.x += vx;
+    this.y += vy;
+    return true;
+  }
+}
+
+class Explosion {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 10;
+    this.maxRadius = 40;
+    this.startTime = Date.now();
+    this.duration = 500;
+  }
+  draw(ctx) {
+    const progress = (Date.now() - this.startTime) / this.duration;
+    if (progress > 1) return false;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 0, 0, ${1 - progress})`;
+    ctx.lineWidth = 1;
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius + (this.maxRadius - this.radius) * progress, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return true;
+  }
+}
+
+class Announcement {
+  constructor(text, canvasWidth, canvasHeight) {
+    this.text = text;
+    this.startTime = Date.now();
+    this.duration = 2000;
+    this.canvasWidth = canvasWidth;
+    this.canvasHeight = canvasHeight;
+  }
+  draw(ctx) {
+    const progress = (Date.now() - this.startTime) / this.duration;
+    if (progress > 1) return false;
+    ctx.save();
+    ctx.fillStyle = `rgba(0, 255, 0, ${1 - progress})`;
+    ctx.font = 'clamp(16px, 4vw, 18px) Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.text, this.canvasWidth / 2, this.canvasHeight / 4);
+    ctx.restore();
+    return true;
   }
 }
