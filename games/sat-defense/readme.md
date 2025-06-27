@@ -1,0 +1,1 @@
+this game is not integrated or designed in any way to fix zapcade interface yet. gotta fix that.
