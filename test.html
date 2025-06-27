@@ -27,23 +27,63 @@
     #header h1 {
       margin: 0;
       font-size: 24px;
-      padding-left: 10px;
-      color: #F5F5F5;
+      padding-left: 10px; /* Added padding to the left of the title */
+      color: #F5F5F5; /* Light white */
     }
-    #header-icons {
-      display: flex;
-      gap: 10px;
-      padding-right: 10px;
-    }
-    .header-icon {
+    #burger-menu {
       width: 30px;
-      height: 30px;
+      height: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       cursor: pointer;
-      fill: #F7931A; /* Bitcoin orange */
-      transition: transform 0.2s;
+      z-index: 1000;
+      padding-right: 10px; /* Added padding to the right */
     }
-    .header-icon:hover {
-      transform: scale(1.1);
+    #burger-menu span {
+      width: 100%;
+      height: 3px;
+      background: #F7931A; /* Bitcoin orange */
+      transition: all 0.3s;
+    }
+    #burger-menu.open span:nth-child(1) {
+      transform: rotate(45deg) translate(5px, 5px);
+    }
+    #burger-menu.open span:nth-child(2) {
+      opacity: 0;
+    }
+    #burger-menu.open span:nth-child(3) {
+      transform: rotate(-45deg) translate(5px, -5px);
+    }
+    #game-menu {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 200px;
+      height: 100%;
+      background: #222; /* Dark gray */
+      transition: right 0.3s;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 999;
+    }
+    #game-menu.open {
+      right: 0;
+    }
+    #game-menu button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #555; /* Medium gray */
+      color: #F5F5F5; /* Light white */
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      text-align: left;
+    }
+    #game-menu button:hover {
+      background: #D3D3D3; /* Light gray */
     }
     #canvas {
       border: 2px solid #F7931A; /* Bitcoin orange border */
@@ -57,7 +97,7 @@
       bottom: 0;
       width: 100%;
       max-width: 400px;
-      padding: 10px;
+      padding: 10px 10px 10px 10px; /* Added padding-left and padding-right for edge spacing */
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -96,25 +136,23 @@
       font-size: 24px;
       cursor: pointer;
       touch-action: none;
-      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5),
-                  inset 0 0 10px rgba(245, 245, 245, 0.5),
-                  0 0 5px rgba(247, 147, 26, 0.3);
+      box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5), /* Drop shadow */
+                 inset 0 0 10px rgba(245, 245, 245, 0.5), /* Inner light (light white) */
+                 0 0 5px rgba(247, 147, 26, 0.3); /* Bitcoin orange outer glow */
     }
   </style>
 </head>
 <body>
   <div id="header">
     <h1>Zapcade</h1>
-    <div id="header-icons">
-      <svg id="game-menu" class="header-icon" viewBox="0 0 24 24">
-        <path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm3 4v2H7v2h2v2h2v-2h2v2h2v-2h2V8h-2V6h-2v2h-2V6H9z"/>
-      </svg>
-      <a href="https://github.com/realjuangalt/zapcade" target="_blank">
-        <svg class="header-icon" viewBox="0 0 24 24">
-          <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.66-.22.66-.49v-1.7c-2.78.61-3.37-1.34-3.37-1.34-.46-1.16-1.12-1.47-1.12-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0112 6.8c.85.004 1.71.11 2.52.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.94.68 1.9v2.82c0 .27.16.58.67.49A10.01 10.01 0 0022 12c0-5.52-4.48-10-10-10z"/>
-        </svg>
-      </a>
+    <div id="burger-menu">
+      <span></span>
+      <span></span>
+      <span></span>
     </div>
+  </div>
+  <div id="game-menu">
+    <!-- Buttons will be dynamically generated -->
   </div>
   <canvas id="canvas"></canvas>
   <div id="controls">
@@ -160,29 +198,21 @@
     class Interface {
       constructor() {
         this.canvas = document.getElementById('canvas');
-        if (!this.canvas) {
-          console.error('Canvas element not found');
-          return;
-        }
         this.ctx = this.canvas.getContext('2d');
+        this.callbacks = {};
+        this.burgerMenu = document.getElementById('burger-menu');
         this.gameMenu = document.getElementById('game-menu');
         this.controls = document.getElementById('controls');
-        this.callbacks = {};
         this.currentGame = null;
         this.dpr = window.devicePixelRatio || 1;
         this.defaultControls = this.controls.innerHTML;
-        this.width = 0;
-        this.height = 0;
-        this.isMenuActive = true;
-        this.gamesList = [];
-        this.loading = true;
+        this.width = 0; // CSS pixel width
+        this.height = 0; // CSS pixel height
         this.resizeCanvas();
         this.setupInputs();
-        this.fetchGamesList().then(() => {
-          this.loading = false;
-          this.loadGame('menu');
-        });
+        this.fetchGamesList().then(() => this.setupGameMenu());
         window.addEventListener('resize', () => this.resizeCanvas());
+        this.displayInitialMessage();
       }
 
       async fetchGamesList() {
@@ -196,7 +226,7 @@
           console.log('Fetched games list:', this.gamesList);
         } catch (error) {
           console.error('Failed to fetch games list:', error);
-          this.gamesList = ['menu', 'sat-defense', 'cosmic-defender', 'gorilla-rampage'];
+          this.gamesList = ['cosmic-defender', 'space-invaders', 'gorilla-rampage'];
         }
       }
 
@@ -207,12 +237,21 @@
           .join(' ');
       }
 
+      displayInitialMessage() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = '#F5F5F5';
+        this.ctx.font = '24px Arial, sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('Select a game from the menu', this.width / 2, this.height / 2);
+      }
+
       setGameConfig(config) {
         this.gameConfig = config || {};
         this.gridMode = !!config.gridMode;
         this.gridSize = config.gridSize || 8;
-        this.canvas.width = this.width * this.dpr;
-        this.canvas.height = this.height * this.dpr;
+        canvas.width = this.width * this.dpr;
+        canvas.height = this.height * this.dpr;
         this.canvas.style.width = `${this.width}px`;
         this.canvas.style.height = `${this.height}px`;
         this.ctx.scale(this.dpr, this.dpr);
@@ -246,8 +285,10 @@
         this.canvas.style.width = `${cssWidth}px`;
         this.canvas.style.height = `${cssHeight}px`;
         this.ctx.scale(this.dpr, this.dpr);
-        if (!this.loading && this.callbacks.onResize) {
+        if (this.callbacks.onResize) {
           this.callbacks.onResize(this.width, this.height);
+        } else {
+          this.displayInitialMessage();
         }
       }
 
@@ -428,39 +469,56 @@
         });
       }
 
-      async loadGame(gameName) {
-        try {
-          const module = await import(`./games/${gameName}/game.js`);
-          this.currentGame = new module.default(this);
-          this.currentGame.ui.setGameConfig({ gridMode: this.currentGame.gridMode, gridSize: this.currentGame.gridSize });
-          this.currentGame.init();
-          this.isMenuActive = gameName === 'menu';
-        } catch (error) {
-          console.error(`Failed to load ${gameName}:`, error);
-          this.ctx.fillStyle = '#F5F5F5';
-          this.ctx.font = '20px Arial, sans-serif';
-          this.ctx.textAlign = 'center';
-          this.ctx.textBaseline = 'middle';
-          this.ctx.fillText(`Failed to load ${gameName}.`, this.width / 2, this.height / 2 - 20);
-          this.ctx.fillText('Please run on GitHub Pages (dev.zapcade.fun)', this.width / 2, this.height / 2 + 20);
-          setTimeout(() => this.loadGame('menu'), 3000);
-        }
-      }
+      setupGameMenu() {
+        this.gameMenu.innerHTML = '';
+        this.gamesList.forEach(folderName => {
+          const displayName = this.formatGameName(folderName);
+          const button = document.createElement('button');
+          button.setAttribute('data-game', folderName);
+          button.textContent = displayName;
+          this.gameMenu.appendChild(button);
+        });
 
-      setupMenuTrigger() {
-        this.gameMenu.addEventListener('click', () => {
-          if (!this.isMenuActive) {
-            this.callbacks = {};
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.resetControls();
-            this.loadGame('menu');
-          }
+        this.burgerMenu.addEventListener('click', () => {
+          this.burgerMenu.classList.toggle('open');
+          this.gameMenu.classList.toggle('open');
+        });
+
+        const gameButtons = this.gameMenu.querySelectorAll('button');
+        gameButtons.forEach(button => {
+          button.addEventListener('click', async () => {
+            const gameName = button.dataset.game;
+            if (!gameName) return;
+
+            this.burgerMenu.classList.remove('open');
+            this.gameMenu.classList.remove('open');
+
+            if (this.currentGame) {
+              this.callbacks = {};
+              this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+              this.resetControls();
+            }
+
+            try {
+              const module = await import(`./games/${gameName}/game.js`);
+              this.currentGame = new module.default(this);
+              this.currentGame.ui.setGameConfig({ gridMode: this.currentGame.gridMode, gridSize: this.currentGame.gridSize });
+              this.currentGame.init();
+            } catch (error) {
+              console.error(`Failed to load game ${gameName}:`, error);
+              this.ctx.fillStyle = '#F5F5F5';
+              this.ctx.font = '24px Arial, sans-serif';
+              this.ctx.textAlign = 'center';
+              this.ctx.textBaseline = 'middle';
+              this.ctx.fillText(`Failed to load ${gameName}`, this.width / 2, this.height / 2);
+              setTimeout(() => this.displayInitialMessage(), 2000);
+            }
+          });
         });
       }
     }
 
     const ui = new Interface();
-    ui.setupMenuTrigger();
   </script>
 </body>
 </html>
